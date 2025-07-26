@@ -4,7 +4,7 @@ version = "1.0.0"
 authors = ["Umi Name Service Team"]
 
 [addresses]
-umi_name_service = "0x71197e7a1ca5a2cb2ad82432b924f69b1e3db123"
+umi_name_service = "0x00000000000000000000000071197e7a1ca5a2cb2ad82432b924f69b1e3db123"
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-framework.git"
