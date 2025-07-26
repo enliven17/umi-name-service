@@ -151,7 +151,7 @@ module umi_name_service::name_service {
                 vector::remove(&mut user_domains.domains, i);
                 break
             };
-            i = i + 1;
+            i = i + 1; // Bu satır eksikti - immutable i değişkenini artırıyoruz
         };
         
         // Add to new user's domains
