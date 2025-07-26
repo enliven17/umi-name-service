@@ -7,7 +7,7 @@ import { setSearchedDomain, setLoading, setError } from '@/store/slices/domainSl
 import { Button } from '@/components/styled/Button';
 import { Input } from '@/components/styled/Input';
 import { Card } from '@/components/styled/Card';
-import { nameServiceContract } from '@/api/contracts';
+import { isDomainAvailable, getDomainOwner } from '@/api/moveNameService';
 import { theme } from '@/theme';
 import { ROUTES } from '@/constants/routes';
 
@@ -151,7 +151,7 @@ export const DomainSearch: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { isConnected, address } = useWallet();
-  const { searchedDomain, isLoading, error } = useAppSelector((state) => state.domains);
+  const { searchedDomain, isLoading, error } = useAppSelector((state: any) => state.domains);
   
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -162,10 +162,37 @@ export const DomainSearch: React.FC = () => {
     }
   }, [searchTerm]);
 
+  const validateDomainName = (name: string) => {
+    if (!name.trim()) {
+      return { isValid: false, error: 'Domain name is required' };
+    }
+    
+    if (name.length < 3) {
+      return { isValid: false, error: 'Domain name must be at least 3 characters long' };
+    }
+    
+    if (name.length > 20) {
+      return { isValid: false, error: 'Domain name must be less than 20 characters long' };
+    }
+    
+    // Sadece harf, rakam ve tire kabul et
+    const validChars = /^[a-zA-Z0-9-]+$/;
+    if (!validChars.test(name)) {
+      return { isValid: false, error: 'Domain name can only contain letters, numbers, and hyphens' };
+    }
+    
+    // Tire ile başlayamaz veya bitemez
+    if (name.startsWith('-') || name.endsWith('-')) {
+      return { isValid: false, error: 'Domain name cannot start or end with a hyphen' };
+    }
+    
+    return { isValid: true, error: null };
+  };
+
   const handleSearch = async (term: string) => {
     if (!term.trim()) return;
 
-    const validation = nameServiceContract.validateDomainName(term);
+    const validation = validateDomainName(term);
     if (!validation.isValid) {
       setValidationError(validation.error);
       dispatch(setSearchedDomain(null));
@@ -177,7 +204,21 @@ export const DomainSearch: React.FC = () => {
     dispatch(setError(null));
 
     try {
-      const domainInfo = await nameServiceContract.getDomainInfo(term);
+      // Move kontratından domain bilgilerini çek
+      const [isAvailable, owner] = await Promise.all([
+        isDomainAvailable(term),
+        getDomainOwner(term)
+      ]);
+
+      const domainInfo = {
+        name: term,
+        isAvailable,
+        owner: owner || '',
+        resolver: '', // Henüz resolver fonksiyonu yok
+        price: '1', // Sabit fiyat, gerçek uygulamada kontrat'tan çekilebilir
+        expiryDate: null // Henüz expiry date fonksiyonu yok
+      };
+
       dispatch(setSearchedDomain(domainInfo));
     } catch (err: any) {
       dispatch(setError(err.message || 'Failed to search domain'));
@@ -201,14 +242,6 @@ export const DomainSearch: React.FC = () => {
 
   const formatAddress = (addr: string) => {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
   };
 
   return (
@@ -266,13 +299,6 @@ export const DomainSearch: React.FC = () => {
               <div className="label">Registration Price</div>
               <div className="value">{searchedDomain.price} ETH</div>
             </InfoItem>
-            
-            {searchedDomain.expiryDate && (
-              <InfoItem>
-                <div className="label">Expires</div>
-                <div className="value">{formatDate(searchedDomain.expiryDate)}</div>
-              </InfoItem>
-            )}
           </DomainInfo>
 
           <ActionButtons>
