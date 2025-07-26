@@ -1,27 +1,44 @@
 const express = require('express');
 const cors = require('cors');
-const fetch = require('node-fetch');
 
 const app = express();
 const PORT = 4000;
 const UMI_RPC = 'https://devnet.uminetwork.com';
 
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true
+}));
 app.use(express.json());
 
 app.use('/', async (req, res) => {
   const url = UMI_RPC + req.url;
   const options = {
     method: req.method,
-    headers: { ...req.headers, host: undefined, origin: undefined },
+    headers: { 
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
     body: ['POST', 'PUT', 'PATCH'].includes(req.method) ? JSON.stringify(req.body) : undefined,
   };
+
   try {
     const response = await fetch(url, options);
-    const data = await response.buffer();
-    res.status(response.status);
-    res.set(response.headers.raw());
-    res.send(data);
+    const text = await response.text();
+
+    // Eğer yanıt boşsa, 204 döndür
+    if (!text) {
+      res.status(response.status).json({});
+      return;
+    }
+
+    // JSON parse edilebiliyorsa öyle döndür, yoksa düz metin döndür
+    try {
+      const json = JSON.parse(text);
+      res.status(response.status).json(json);
+    } catch (e) {
+      res.status(response.status).send(text);
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

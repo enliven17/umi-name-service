@@ -1,109 +1,67 @@
-import styled, { css } from 'styled-components';
+import styled from 'styled-components';
 import { theme } from '@/theme';
 
 interface ButtonProps {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
-  size?: 'sm' | 'md' | 'lg';
-  fullWidth?: boolean;
-  disabled?: boolean;
+  $variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
+  $size?: 'sm' | 'md' | 'lg';
+  $fullWidth?: boolean;
 }
 
-const getVariantStyles = (variant: ButtonProps['variant'] = 'primary') => {
+const getVariantStyles = (variant: ButtonProps['$variant'] = 'primary') => {
   switch (variant) {
-    case 'primary':
-      return css`
-        background-color: ${theme.colors.primary[500]};
-        color: ${theme.colors.text.inverse};
-        border: 1px solid ${theme.colors.primary[500]};
-        
-        &:hover:not(:disabled) {
-          background-color: ${theme.colors.primary[600]};
-          border-color: ${theme.colors.primary[600]};
-        }
-        
-        &:active:not(:disabled) {
-          background-color: ${theme.colors.primary[700]};
-          border-color: ${theme.colors.primary[700]};
-        }
-      `;
-    
     case 'secondary':
-      return css`
-        background-color: ${theme.colors.secondary[500]};
-        color: ${theme.colors.text.inverse};
-        border: 1px solid ${theme.colors.secondary[500]};
-        
-        &:hover:not(:disabled) {
-          background-color: ${theme.colors.secondary[600]};
-          border-color: ${theme.colors.secondary[600]};
-        }
-        
-        &:active:not(:disabled) {
-          background-color: ${theme.colors.secondary[700]};
-          border-color: ${theme.colors.secondary[700]};
+      return `
+        background: ${theme.colors.secondary[500]};
+        color: white;
+        &:hover {
+          background: ${theme.colors.secondary[600]};
         }
       `;
-    
     case 'outline':
-      return css`
-        background-color: transparent;
+      return `
+        background: transparent;
         color: ${theme.colors.primary[500]};
-        border: 1px solid ${theme.colors.primary[500]};
-        
-        &:hover:not(:disabled) {
-          background-color: ${theme.colors.primary[50]};
-        }
-        
-        &:active:not(:disabled) {
-          background-color: ${theme.colors.primary[100]};
+        border: 2px solid ${theme.colors.primary[500]};
+        &:hover {
+          background: ${theme.colors.primary[50]};
         }
       `;
-    
     case 'ghost':
-      return css`
-        background-color: transparent;
-        color: ${theme.colors.text.primary};
-        border: 1px solid transparent;
-        
-        &:hover:not(:disabled) {
-          background-color: ${theme.colors.neutral[100]};
-        }
-        
-        &:active:not(:disabled) {
-          background-color: ${theme.colors.neutral[200]};
+      return `
+        background: transparent;
+        color: ${theme.colors.text.secondary};
+        &:hover {
+          background: ${theme.colors.neutral[100]};
         }
       `;
-    
     default:
-      return css``;
+      return `
+        background: ${theme.colors.primary[500]};
+        color: white;
+        &:hover {
+          background: ${theme.colors.primary[600]};
+        }
+      `;
   }
 };
 
-const getSizeStyles = (size: ButtonProps['size'] = 'md') => {
+const getSizeStyles = (size: ButtonProps['$size'] = 'md') => {
   switch (size) {
     case 'sm':
-      return css`
+      return `
         padding: ${theme.spacing[2]} ${theme.spacing[3]};
         font-size: ${theme.fonts.size.sm};
-        border-radius: ${theme.borderRadius.md};
       `;
-    
-    case 'md':
-      return css`
-        padding: ${theme.spacing[3]} ${theme.spacing[4]};
-        font-size: ${theme.fonts.size.base};
-        border-radius: ${theme.borderRadius.lg};
-      `;
-    
     case 'lg':
-      return css`
+      return `
         padding: ${theme.spacing[4]} ${theme.spacing[6]};
         font-size: ${theme.fonts.size.lg};
-        border-radius: ${theme.borderRadius.xl};
       `;
-    
     default:
-      return css``;
+      return `
+        padding: ${theme.spacing[3]} ${theme.spacing[4]};
+        font-size: ${theme.fonts.size.base};
+      `;
   }
 };
 
@@ -111,30 +69,21 @@ export const Button = styled.button<ButtonProps>`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: ${theme.fonts.family.primary};
+  border: none;
+  border-radius: ${theme.borderRadius.lg};
   font-weight: ${theme.fonts.weight.medium};
-  line-height: ${theme.fonts.lineHeight.normal};
-  text-decoration: none;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  box-shadow: ${theme.shadows.sm};
+  transition: all 0.2s ease;
+  text-decoration: none;
+  width: ${({ $fullWidth }) => $fullWidth ? '100%' : 'auto'};
   
-  ${({ variant }) => getVariantStyles(variant)}
-  ${({ size }) => getSizeStyles(size)}
+  ${({ $variant }) => getVariantStyles($variant)}
+  ${({ $size }) => getSizeStyles($size)}
   
-  ${({ fullWidth }) =>
-    fullWidth &&
-    css`
-      width: 100%;
-    `}
-  
-  ${({ disabled }) =>
-    disabled &&
-    css`
-      opacity: 0.5;
-      cursor: not-allowed;
-      pointer-events: none;
-    `}
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
   
   &:focus {
     outline: none;

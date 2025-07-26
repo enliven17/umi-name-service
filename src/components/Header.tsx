@@ -176,9 +176,9 @@ export const Header: React.FC = () => {
           <WalletInfo>
             <div className="balance">{balance} ETH</div>
             <div className="address">{formatAddress(address!)}</div>
-            <DisconnectButton variant="outline" size="sm" onClick={disconnectWallet}>
-              Disconnect
-            </DisconnectButton>
+                             <DisconnectButton $variant="outline" $size="sm" onClick={disconnectWallet}>
+                   Disconnect
+                 </DisconnectButton>
           </WalletInfo>
         ) : (
           <ConnectButton onClick={connectWallet} disabled={false}>

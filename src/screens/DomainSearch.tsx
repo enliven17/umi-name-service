@@ -256,7 +256,7 @@ export const DomainSearch: React.FC = () => {
           placeholder="Enter domain name (e.g., myname)"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          fullWidth
+          $fullWidth
         />
         <Button type="submit" disabled={!searchTerm.trim()}>
           Search
@@ -306,15 +306,15 @@ export const DomainSearch: React.FC = () => {
               <Button
                 onClick={handleRegister}
                 disabled={!isConnected}
-                fullWidth
+                $fullWidth
               >
                 {isConnected ? 'Register Domain' : 'Connect Wallet to Register'}
               </Button>
             ) : (
               <Button
-                variant="outline"
+                $variant="outline"
                 onClick={() => navigate(ROUTES.HOME)}
-                fullWidth
+                $fullWidth
               >
                 Search Another Domain
               </Button>

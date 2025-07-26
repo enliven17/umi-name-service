@@ -351,30 +351,30 @@ export const Home: React.FC = () => {
         )}
         
         <SearchForm onSubmit={handleSearch}>
-          <SearchInput
-            type="text"
-            placeholder="Search for a .umi name"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            fullWidth
-            size="lg"
-            disabled={!isConnected}
-          />
-          <SearchButton
-            type="submit"
-            fullWidth
-            size="lg"
-            disabled={!isConnected || !searchTerm.trim()}
-          >
-            Search Domain
-          </SearchButton>
-        </SearchForm>
-        
-        {isConnected && (
-          <ActionButtons>
-            <MyDomainsButton onClick={handleMyDomains} fullWidth>
-              👤 View My Domains
-            </MyDomainsButton>
+                         <SearchInput
+                 type="text"
+                 placeholder="Search for a .umi name"
+                 value={searchTerm}
+                 onChange={(e) => setSearchTerm(e.target.value)}
+                 $fullWidth
+                 $size="lg"
+                 disabled={!isConnected}
+               />
+               <SearchButton
+                 type="submit"
+                 $fullWidth
+                 $size="lg"
+                 disabled={!isConnected || !searchTerm.trim()}
+               >
+                 Search Domain
+               </SearchButton>
+             </SearchForm>
+             
+             {isConnected && (
+               <ActionButtons>
+                 <MyDomainsButton onClick={handleMyDomains} $fullWidth>
+                   👤 View My Domains
+                 </MyDomainsButton>
           </ActionButtons>
         )}
       </SearchSection>
