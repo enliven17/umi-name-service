@@ -4,6 +4,7 @@ import { Header } from '@/components/Header';
 import { Home } from '@/screens/Home';
 import { DomainSearch } from '@/screens/DomainSearch';
 import { DomainRegistration } from '@/screens/DomainRegistration';
+import { MyDomains } from '@/screens/MyDomains';
 import { ROUTES } from '@/constants/routes';
 
 export const AppNavigator: React.FC = () => {
@@ -15,6 +16,7 @@ export const AppNavigator: React.FC = () => {
           <Route path={ROUTES.HOME} element={<Home />} />
           <Route path={ROUTES.SEARCH} element={<DomainSearch />} />
           <Route path={ROUTES.REGISTER} element={<DomainRegistration />} />
+          <Route path={ROUTES.MY_DOMAINS} element={<MyDomains />} />
           {/* Add more routes as we create more screens */}
         </Routes>
       </div>

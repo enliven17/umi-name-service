@@ -13,6 +13,8 @@
     "@mysten/bcs": "^1.6.4",
     "@reduxjs/toolkit": "^1.9.5",
     "@wagmi/core": "^1.4.7",
+    "dotenv": "^17.2.1",
+    "ethereumjs-util": "^7.1.5",
     "ethers": "^6.8.1",
     "framer-motion": "^10.16.4",
     "react": "^18.2.0",

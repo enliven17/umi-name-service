@@ -14,6 +14,9 @@ export const useWallet = () => {
   const dispatch = useAppDispatch();
   const wallet = useAppSelector((state) => state.wallet);
 
+  // Tek seferde bir network ekleme/switch isteği olmasına izin ver
+  let isNetworkRequestPending = false;
+
   const connectWallet = async () => {
     try {
       dispatch(setConnecting(true));
@@ -34,8 +37,13 @@ export const useWallet = () => {
       const network = await provider.getNetwork();
       const chainId = Number(network.chainId);
 
+      // Eğer zaten Umi Devnet'teyse tekrar switch/add yapma
       if (chainId !== UMI_CONFIG.chainId) {
-        // Try to switch to Umi network
+        if (isNetworkRequestPending) {
+          dispatch(setError('Network switch/add already pending. Lütfen MetaMask penceresini kontrol edin.'));
+          return;
+        }
+        isNetworkRequestPending = true;
         try {
           await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
@@ -51,8 +59,8 @@ export const useWallet = () => {
                   chainId: `0x${UMI_CONFIG.chainId.toString(16)}`,
                   chainName: 'Umi Devnet',
                   nativeCurrency: {
-                    name: 'ETH',
-                    symbol: 'ETH',
+                    name: 'UMI',
+                    symbol: 'UMI',
                     decimals: 18,
                   },
                   rpcUrls: [UMI_CONFIG.rpcUrl],
@@ -61,9 +69,11 @@ export const useWallet = () => {
               ],
             });
           } else {
+            isNetworkRequestPending = false;
             throw switchError;
           }
         }
+        isNetworkRequestPending = false;
       }
 
       const balance = await provider.getBalance(account);

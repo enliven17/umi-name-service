@@ -33,7 +33,7 @@ module umi_name_service::name_service {
 
     // Capability for managing the registry
     struct RegistryCapability has key {
-        cap: account::SignerCapability,
+        cap: u8, // kaldırıldı, dummy field
     }
 
     // Initialize the module
@@ -44,9 +44,9 @@ module umi_name_service::name_service {
             total_domains: 0,
         });
 
-        // Store the capability
+        // Store the capability (dummy, eski fonksiyon kaldırıldı)
         move_to(account, RegistryCapability {
-            cap: account::create_signer_cap(account),
+            cap: 0,
         });
     }
 
@@ -96,22 +96,22 @@ module umi_name_service::name_service {
     // Check if a domain is registered
     public fun is_domain_registered(name: &String): bool acquires DomainRegistry {
         let registry = borrow_global<DomainRegistry>(@umi_name_service);
-        std::table::contains(&registry.domains, name)
+        std::table::contains(&registry.domains, *name)
     }
 
     // Get domain owner
     public fun get_domain_owner(name: &String): address acquires DomainRegistry {
         let registry = borrow_global<DomainRegistry>(@umi_name_service);
-        assert!(std::table::contains(&registry.domains, name), ENAME_NOT_REGISTERED);
-        let domain_info = std::table::borrow(&registry.domains, name);
+        assert!(std::table::contains(&registry.domains, *name), ENAME_NOT_REGISTERED);
+        let domain_info = std::table::borrow(&registry.domains, *name);
         domain_info.owner
     }
 
     // Get domain expiry
     public fun get_domain_expiry(name: &String): u64 acquires DomainRegistry {
         let registry = borrow_global<DomainRegistry>(@umi_name_service);
-        assert!(std::table::contains(&registry.domains, name), ENAME_NOT_REGISTERED);
-        let domain_info = std::table::borrow(&registry.domains, name);
+        assert!(std::table::contains(&registry.domains, *name), ENAME_NOT_REGISTERED);
+        let domain_info = std::table::borrow(&registry.domains, *name);
         domain_info.expiry
     }
 
@@ -139,7 +139,7 @@ module umi_name_service::name_service {
         
         // Update domain owner
         let registry = borrow_global_mut<DomainRegistry>(@umi_name_service);
-        let domain_info = std::table::borrow_mut(&mut registry.domains, &name);
+        let domain_info = std::table::borrow_mut(&mut registry.domains, name);
         domain_info.owner = new_owner;
         
         // Remove from current user's domains
@@ -156,10 +156,7 @@ module umi_name_service::name_service {
         
         // Add to new user's domains
         if (!exists<UserDomains>(new_owner)) {
-            account::create_account(new_owner);
-            move_to(&account::create_signer_with_capability(
-                &borrow_global<RegistryCapability>(@umi_name_service).cap
-            ), UserDomains {
+            move_to(user, UserDomains {
                 domains: vector::empty(),
             });
         };
@@ -182,7 +179,7 @@ module umi_name_service::name_service {
         
         // Update resolver
         let registry = borrow_global_mut<DomainRegistry>(@umi_name_service);
-        let domain_info = std::table::borrow_mut(&mut registry.domains, &name);
+        let domain_info = std::table::borrow_mut(&mut registry.domains, name);
         domain_info.resolver = resolver;
     }
 
@@ -200,7 +197,7 @@ module umi_name_service::name_service {
         
         // Update expiry
         let registry = borrow_global_mut<DomainRegistry>(@umi_name_service);
-        let domain_info = std::table::borrow_mut(&mut registry.domains, &name);
+        let domain_info = std::table::borrow_mut(&mut registry.domains, name);
         let current_expiry = domain_info.expiry;
         let current_time = timestamp::now_seconds();
         
@@ -218,18 +215,18 @@ module umi_name_service::name_service {
     fun validate_domain_name(name: &String): bool {
         let chars = string::bytes(name);
         let i = 0;
-        let len = vector::length(&chars);
+        let len = vector::length(chars);
         
         // Check if name is not empty
         if (len == 0) return false;
         
         // Check if starts or ends with hyphen
-        if (vector::borrow(&chars, 0) == &45 || vector::borrow(&chars, len - 1) == &45) {
+        if (*vector::borrow(chars, 0) == 45 || *vector::borrow(chars, len - 1) == 45) {
             return false
         };
         
         while (i < len) {
-            let char = *vector::borrow(&chars, i);
+            let char = *vector::borrow(chars, i);
             // Allow lowercase letters (97-122), numbers (48-57), and hyphens (45)
             if (!(char >= 97 && char <= 122) && !(char >= 48 && char <= 57) && char != 45) {
                 return false

@@ -1,3 +1,4 @@
+require('dotenv').config();
 require("@nomicfoundation/hardhat-toolbox");
 require("@moved/hardhat-plugin");
 
@@ -6,7 +7,7 @@ module.exports = {
   networks: {
     devnet: {
       url: "https://devnet.uminetwork.com",
-      accounts: ["YOUR_PRIVATE_KEY"] // Replace with your private key
+      accounts: [process.env.PRIVATE_KEY]
     }
   },
   solidity: {

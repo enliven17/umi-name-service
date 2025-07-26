@@ -35,7 +35,7 @@ const walletSlice = createSlice({
     setBalance: (state, action: PayloadAction<string>) => {
       state.balance = action.payload;
     },
-    setError: (state, action: PayloadAction<string>) => {
+    setError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload;
       state.isConnecting = false;
     },

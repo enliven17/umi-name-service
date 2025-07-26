@@ -19,6 +19,10 @@ async function main() {
   await nameService.waitForDeployment();
   
   console.log(`Name Service is deployed to: ${deployer.address}::${contractName}`);
+  if (nameService && nameService.deploymentTransaction) {
+    const deployTx = await nameService.deploymentTransaction();
+    console.log('Deploy transaction hash:', deployTx.hash);
+  }
   
   // Initialize the contract
   const address = AccountAddress.fromString(moduleAddress);
@@ -41,8 +45,9 @@ async function main() {
   };
   
   console.log('Sending initialization transaction...');
-  await deployer.sendTransaction(request);
+  const initTx = await deployer.sendTransaction(request);
   console.log('Initialize transaction sent');
+  console.log('Init transaction hash:', initTx.hash);
   
   console.log('\n🎉 Deployment completed successfully!');
   console.log('Contract address:', deployer.address);
