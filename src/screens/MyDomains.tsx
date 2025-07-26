@@ -1,267 +1,279 @@
-import React, { useEffect, useState } from 'react';
-import { useWallet } from '@/hooks/useWallet';
-import { getUserDomains } from '@/api/moveNameService';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { useWalletContext } from '@/contexts/WalletContext';
+import { getUserDomains } from '@/api/hybridNameService';
+import { Card } from '@/components/styled/Card';
 import { theme } from '@/theme';
 
 const Container = styled.div`
-  min-height: calc(100vh - 80px);
-  background: linear-gradient(135deg, 
-    ${theme.colors.primary[50]} 0%, 
-    ${theme.colors.secondary[50]} 50%, 
-    ${theme.colors.primary[100]} 100%);
-  padding: ${theme.spacing[8]} ${theme.spacing[6]};
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  overflow: hidden;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="%23ffffff" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-    pointer-events: none;
-  }
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: ${theme.spacing[6]};
 `;
 
-const Content = styled.div`
-  max-width: 800px;
-  width: 100%;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: ${theme.borderRadius.xl};
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  padding: ${theme.spacing[8]};
-  position: relative;
-  z-index: 1;
-  animation: fadeInUp 0.8s ease-out;
-  
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(30px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+const Header = styled.div`
+  text-align: center;
+  margin-bottom: ${theme.spacing[8]};
 `;
 
-const Title = styled.h2`
-  font-size: clamp(2rem, 4vw, 2.5rem);
+const Title = styled.h1`
+  font-size: ${theme.fonts.size['3xl']};
   font-weight: ${theme.fonts.weight.bold};
   color: ${theme.colors.text.primary};
-  margin-bottom: ${theme.spacing[6]};
-  text-align: center;
-  background: linear-gradient(135deg, ${theme.colors.primary[600]}, ${theme.colors.secondary[600]});
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  margin-bottom: ${theme.spacing[4]};
 `;
 
-const DomainList = styled.ul`
-  list-style: none;
-  padding: 0;
-  margin: 0;
-`;
-
-const DomainItem = styled.li`
+const Subtitle = styled.p`
   font-size: ${theme.fonts.size.lg};
-  padding: ${theme.spacing[4]} ${theme.spacing[6]};
-  margin-bottom: ${theme.spacing[3]};
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid ${theme.colors.neutral[200]};
+  color: ${theme.colors.text.secondary};
+  max-width: 600px;
+  margin: 0 auto;
+`;
+
+const ConnectPrompt = styled.div`
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
   border-radius: ${theme.borderRadius.lg};
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
+  padding: ${theme.spacing[6]};
+  margin: ${theme.spacing[8]} 0;
+  text-align: center;
   
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
-    background: linear-gradient(135deg, ${theme.colors.primary[500]}, ${theme.colors.secondary[500]});
-    transition: width 0.3s ease;
+  p {
+    margin: 0;
+    color: #856404;
+    font-weight: ${theme.fonts.weight.medium};
+    font-size: ${theme.fonts.size.lg};
   }
+`;
+
+const DomainGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: ${theme.spacing[6]};
+  margin-top: ${theme.spacing[6]};
+`;
+
+const DomainCard = styled(Card)`
+  padding: ${theme.spacing[6]};
+  transition: all 0.3s ease;
   
   &:hover {
-    transform: translateX(8px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-    border-color: ${theme.colors.primary[300]};
-    
-    &::before {
-      width: 8px;
-    }
-  }
-  
-  &:last-child {
-    margin-bottom: 0;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   }
 `;
 
-const LoadingContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: ${theme.spacing[12]};
+const DomainName = styled.h3`
+  font-size: ${theme.fonts.size.xl};
+  font-weight: ${theme.fonts.weight.bold};
+  color: ${theme.colors.text.primary};
+  margin-bottom: ${theme.spacing[3]};
 `;
 
-const LoadingSpinner = styled.div`
-  width: 40px;
-  height: 40px;
-  border: 4px solid ${theme.colors.neutral[200]};
-  border-top: 4px solid ${theme.colors.primary[500]};
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+const DomainInfo = styled.div`
   margin-bottom: ${theme.spacing[4]};
+`;
+
+const InfoRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: ${theme.spacing[2]};
   
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+  .label {
+    font-size: ${theme.fonts.size.sm};
+    color: ${theme.colors.text.secondary};
+  }
+  
+  .value {
+    font-size: ${theme.fonts.size.sm};
+    font-weight: ${theme.fonts.weight.medium};
+    color: ${theme.colors.text.primary};
   }
 `;
 
-const LoadingText = styled.p`
-  color: ${theme.colors.text.secondary};
-  font-size: ${theme.fonts.size.lg};
-  margin: 0;
-`;
-
-const ErrorContainer = styled.div`
-  text-align: center;
-  padding: ${theme.spacing[8]};
-`;
-
-const ErrorMessage = styled.p`
-  color: ${theme.colors.error[600]};
-  font-size: ${theme.fonts.size.lg};
-  background: rgba(239, 68, 68, 0.1);
-  padding: ${theme.spacing[4]} ${theme.spacing[6]};
-  border-radius: ${theme.borderRadius.lg};
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  margin: 0;
+const ChainBadge = styled.span<{ $chain: 'move' | 'evm' }>`
+  display: inline-block;
+  padding: ${theme.spacing[1]} ${theme.spacing[2]};
+  border-radius: ${theme.borderRadius.full};
+  font-size: ${theme.fonts.size.xs};
+  font-weight: ${theme.fonts.weight.medium};
+  background: ${({ $chain }) => 
+    $chain === 'move' ? theme.colors.primary[100] : theme.colors.secondary[100]};
+  color: ${({ $chain }) => 
+    $chain === 'move' ? theme.colors.primary[700] : theme.colors.secondary[700]};
 `;
 
 const EmptyState = styled.div`
   text-align: center;
   padding: ${theme.spacing[12]};
-`;
-
-const EmptyIcon = styled.div`
-  width: 80px;
-  height: 80px;
-  background: linear-gradient(135deg, ${theme.colors.neutral[200]}, ${theme.colors.neutral[300]});
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto ${theme.spacing[6]};
-  font-size: ${theme.fonts.size['3xl']};
-  color: ${theme.colors.neutral[500]};
-`;
-
-const EmptyText = styled.p`
   color: ${theme.colors.text.secondary};
-  font-size: ${theme.fonts.size.lg};
-  margin: 0;
+  
+  .icon {
+    font-size: 4rem;
+    margin-bottom: ${theme.spacing[4]};
+  }
+  
+  h3 {
+    font-size: ${theme.fonts.size.xl};
+    margin-bottom: ${theme.spacing[2]};
+    color: ${theme.colors.text.primary};
+  }
+  
+  p {
+    font-size: ${theme.fonts.size.lg};
+  }
 `;
 
-const ConnectPrompt = styled.div`
+const LoadingSpinner = styled.div`
   text-align: center;
-  padding: ${theme.spacing[12]};
+  padding: ${theme.spacing[8]};
+  color: ${theme.colors.text.secondary};
 `;
 
-const ConnectText = styled.p`
-  color: ${theme.colors.text.secondary};
-  font-size: ${theme.fonts.size.xl};
-  margin: 0;
-  background: linear-gradient(135deg, ${theme.colors.warning[50]}, ${theme.colors.warning[100]});
-  padding: ${theme.spacing[6]} ${theme.spacing[8]};
-  border-radius: ${theme.borderRadius.xl};
-  border: 2px solid ${theme.colors.warning[200]};
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
-`;
+interface DomainData {
+  move: string[];
+  evm: string[];
+  all: string[];
+}
 
 export const MyDomains: React.FC = () => {
-  const { isConnected, address } = useWallet();
-  const [domains, setDomains] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { walletState } = useWalletContext();
+  const [domains, setDomains] = useState<DomainData>({ move: [], evm: [], all: [] });
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isConnected && address) {
-      setLoading(true);
-      getUserDomains(address)
-        .then(setDomains)
-        .catch((err) => setError(err.message || 'Failed to fetch domains'))
-        .finally(() => setLoading(false));
+  const isConnected = walletState.selectedChain && 
+    ((walletState.selectedChain === 'move' && walletState.moveWallet.isConnected) || 
+     (walletState.selectedChain === 'evm' && walletState.evmWallet.isConnected));
+
+  const fetchUserDomains = async () => {
+    if (!isConnected) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const userAddress = walletState.selectedChain === 'move' 
+        ? walletState.moveWallet.address! 
+        : walletState.evmWallet.address!;
+
+      const userDomains = await getUserDomains(userAddress);
+      setDomains(userDomains);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch domains');
+    } finally {
+      setIsLoading(false);
     }
-  }, [isConnected, address]);
+  };
+
+  useEffect(() => {
+    if (isConnected) {
+      fetchUserDomains();
+    }
+  }, [isConnected, walletState.selectedChain]);
+
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
 
   if (!isConnected) {
     return (
       <Container>
-        <Content>
-          <ConnectPrompt>
-            <ConnectText>🔗 Please connect your wallet to view your domains</ConnectText>
-          </ConnectPrompt>
-        </Content>
+        <Header>
+          <Title>My Domains</Title>
+          <Subtitle>View and manage your registered domains</Subtitle>
+        </Header>
+        
+        <ConnectPrompt>
+          <p>🔗 Connect your wallet to view your domains</p>
+        </ConnectPrompt>
       </Container>
     );
   }
 
+  if (isLoading) {
+    return (
+      <Container>
+        <Header>
+          <Title>My Domains</Title>
+          <Subtitle>View and manage your registered domains</Subtitle>
+        </Header>
+        
+        <LoadingSpinner>
+          <p>Loading your domains...</p>
+        </LoadingSpinner>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <Header>
+          <Title>My Domains</Title>
+          <Subtitle>View and manage your registered domains</Subtitle>
+        </Header>
+        
+        <div style={{ textAlign: 'center', color: 'red', padding: theme.spacing[8] }}>
+          <p>Error: {error}</p>
+        </div>
+      </Container>
+    );
+  }
+
+  const allDomains = domains.all;
+  const connectedChain = walletState.selectedChain;
+
   return (
     <Container>
-      <Content>
+      <Header>
         <Title>My Domains</Title>
-        
-        {loading && (
-          <LoadingContainer>
-            <LoadingSpinner />
-            <LoadingText>Loading your domains...</LoadingText>
-          </LoadingContainer>
-        )}
-        
-        {error && (
-          <ErrorContainer>
-            <ErrorMessage>❌ {error}</ErrorMessage>
-          </ErrorContainer>
-        )}
-        
-        {domains.length === 0 && !loading && !error && (
-          <EmptyState>
-            <EmptyIcon>🏠</EmptyIcon>
-            <EmptyText>You don't own any domains yet.</EmptyText>
-            <EmptyText style={{ marginTop: theme.spacing[2], fontSize: theme.fonts.size.base }}>
-              Start by searching for a domain name on the home page!
-            </EmptyText>
-          </EmptyState>
-        )}
-        
-        {domains.length > 0 && !loading && (
-          <DomainList>
-            {domains.map((domain, index) => (
-              <DomainItem 
-                key={domain}
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                🌐 {domain}.umi
-              </DomainItem>
-            ))}
-          </DomainList>
-        )}
-      </Content>
+        <Subtitle>
+          View and manage your registered domains
+          {connectedChain && (
+            <span style={{ display: 'block', marginTop: theme.spacing[2], fontSize: theme.fonts.size.sm }}>
+              Connected: <strong>{connectedChain.toUpperCase()}</strong> - {formatAddress(connectedChain === 'move' ? walletState.moveWallet.address! : walletState.evmWallet.address!)}
+            </span>
+          )}
+        </Subtitle>
+      </Header>
+
+      {allDomains.length === 0 ? (
+        <EmptyState>
+          <div className="icon">🏠</div>
+          <h3>No domains found</h3>
+          <p>You haven't registered any domains yet. Start by searching for a domain name!</p>
+        </EmptyState>
+      ) : (
+        <DomainGrid>
+          {allDomains.map((domain, index) => (
+            <DomainCard key={index}>
+              <DomainName>{domain}.umi</DomainName>
+              <DomainInfo>
+                <InfoRow>
+                  <span className="label">Chain:</span>
+                  <ChainBadge $chain={connectedChain as 'move' | 'evm'}>
+                    {connectedChain?.toUpperCase()}
+                  </ChainBadge>
+                </InfoRow>
+                <InfoRow>
+                  <span className="label">Owner:</span>
+                  <span className="value">
+                    {formatAddress(connectedChain === 'move' ? walletState.moveWallet.address! : walletState.evmWallet.address!)}
+                  </span>
+                </InfoRow>
+                <InfoRow>
+                  <span className="label">Status:</span>
+                  <span className="value" style={{ color: theme.colors.success[600] }}>
+                    Active
+                  </span>
+                </InfoRow>
+              </DomainInfo>
+            </DomainCard>
+          ))}
+        </DomainGrid>
+      )}
     </Container>
   );
 }; 

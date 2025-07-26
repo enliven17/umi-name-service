@@ -3,16 +3,22 @@ const cors = require('cors');
 
 const app = express();
 const PORT = 4000;
-const UMI_RPC = 'https://devnet.uminetwork.com';
 
-app.use(cors({
-  origin: 'http://localhost:3000',
-  credentials: true
-}));
+// CORS ayarları
+app.use(cors());
 app.use(express.json());
 
+// Umi Devnet RPC URL
+const UMI_RPC_URL = 'https://devnet.uminetwork.com';
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', proxy: 'running' });
+});
+
+// Proxy middleware
 app.use('/', async (req, res) => {
-  const url = UMI_RPC + req.url;
+  const url = UMI_RPC_URL + req.url;
   const options = {
     method: req.method,
     headers: { 
@@ -56,5 +62,5 @@ app.use('/', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Proxy server running on http://localhost:${PORT}`);
-  console.log(`Proxying to Umi Devnet: ${UMI_RPC}`);
+  console.log(`Proxying to Umi Devnet: ${UMI_RPC_URL}`);
 }); 

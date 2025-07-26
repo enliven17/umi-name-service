@@ -1,140 +1,262 @@
-import { useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
-import { useAppDispatch, useAppSelector } from './redux';
-import {
-  setConnecting,
-  setConnected,
-  setDisconnected,
-  setBalance,
-  setError,
-} from '@/store/slices/walletSlice';
-import { UMI_CONFIG } from '@/config/umi';
+
+interface WalletState {
+  isConnected: boolean;
+  address: string | null;
+  balance: string;
+  error: string | null;
+  isNetworkRequestPending: boolean;
+  privateKey: string | null;
+}
 
 export const useWallet = () => {
-  const dispatch = useAppDispatch();
-  const wallet = useAppSelector((state) => state.wallet);
+  const [state, setState] = useState<WalletState>({
+    isConnected: false,
+    address: null,
+    balance: '0',
+    error: null,
+    isNetworkRequestPending: false,
+    privateKey: null,
+  });
 
-  // Tek seferde bir network ekleme/switch isteği olmasına izin ver
-  let isNetworkRequestPending = false;
+  const connectWallet = useCallback(async () => {
+    console.log('connectWallet called');
+    
+    if (!window.ethereum) {
+      console.error('MetaMask is not installed');
+      setState(prev => ({ ...prev, error: 'MetaMask is not installed' }));
+      return;
+    }
 
-  const connectWallet = async () => {
     try {
-      dispatch(setConnecting(true));
-      dispatch(setError(null));
-
-      if (!window.ethereum) {
-        throw new Error('MetaMask is not installed');
+      console.log('Setting network request pending...');
+      setState(prev => ({ ...prev, isNetworkRequestPending: true, error: null }));
+      
+      console.log('Requesting accounts...');
+      
+      // MetaMask'ın hazır olup olmadığını kontrol et
+      if (!window.ethereum.isMetaMask) {
+        throw new Error('MetaMask is not available');
       }
 
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const accounts = await provider.send('eth_requestAccounts', []);
-      const account = accounts[0];
-
-      if (!account) {
-        throw new Error('No accounts found');
-      }
-
-      const network = await provider.getNetwork();
-      const chainId = Number(network.chainId);
-
-      // Eğer zaten Umi Devnet'teyse tekrar switch/add yapma
-      if (chainId !== UMI_CONFIG.chainId) {
-        if (isNetworkRequestPending) {
-          dispatch(setError('Network switch/add already pending. Lütfen MetaMask penceresini kontrol edin.'));
+      // Extension context hatası için try-catch
+      let accounts;
+      try {
+        accounts = await window.ethereum.request({
+          method: 'eth_requestAccounts',
+        });
+      } catch (error: any) {
+        if (error.message.includes('Extension context invalidated')) {
+          console.error('MetaMask extension context invalidated');
+          setState(prev => ({ 
+            ...prev, 
+            error: 'MetaMask extension error. Please refresh the page and try again.',
+            isNetworkRequestPending: false 
+          }));
           return;
         }
-        isNetworkRequestPending = true;
+        throw error;
+      }
+
+      console.log('Accounts received:', accounts);
+
+      if (accounts.length === 0) {
+        console.error('No accounts found');
+        setState(prev => ({ 
+          ...prev, 
+          error: 'No accounts found',
+          isNetworkRequestPending: false 
+        }));
+        return;
+      }
+
+      const account = accounts[0];
+      console.log('Selected account:', account);
+      
+      console.log('Checking chain ID...');
+      let chainId;
+      try {
+        chainId = await window.ethereum.request({
+          method: 'eth_chainId',
+        });
+      } catch (error: any) {
+        if (error.message.includes('Extension context invalidated')) {
+          console.error('MetaMask extension context invalidated during chain check');
+          setState(prev => ({ 
+            ...prev, 
+            error: 'MetaMask extension error. Please refresh the page and try again.',
+            isNetworkRequestPending: false 
+          }));
+          return;
+        }
+        throw error;
+      }
+
+      console.log('Current chain ID:', chainId);
+
+      if (chainId !== '0xa455') { // 42069 in hex
+        console.log('Switching to Umi Devnet...');
         try {
           await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
-            params: [{ chainId: `0x${UMI_CONFIG.chainId.toString(16)}` }],
+            params: [{ chainId: '0xa455' }],
           });
+          console.log('Successfully switched to Umi Devnet');
         } catch (switchError: any) {
-          // If the network doesn't exist, add it
+          console.log('Switch error:', switchError);
           if (switchError.code === 4902) {
-            await window.ethereum.request({
-              method: 'wallet_addEthereumChain',
-              params: [
-                {
-                  chainId: `0x${UMI_CONFIG.chainId.toString(16)}`,
-                  chainName: 'Umi Devnet',
-                  nativeCurrency: {
-                    name: 'UMI',
-                    symbol: 'UMI',
-                    decimals: 18,
+            console.log('Adding Umi Devnet...');
+            try {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [
+                  {
+                    chainId: '0xa455',
+                    chainName: 'Umi Devnet',
+                    nativeCurrency: {
+                      name: 'Ether',
+                      symbol: 'ETH',
+                      decimals: 18,
+                    },
+                    rpcUrls: ['https://devnet.umi.network'],
+                    blockExplorerUrls: ['https://devnet.explorer.moved.network'],
                   },
-                  rpcUrls: [UMI_CONFIG.rpcUrl],
-                  blockExplorerUrls: [UMI_CONFIG.explorerUrl],
-                },
-              ],
-            });
+                ],
+              });
+              console.log('Successfully added Umi Devnet');
+            } catch (addError) {
+              console.error('Failed to add Umi Devnet:', addError);
+              setState(prev => ({ 
+                ...prev, 
+                error: 'Failed to add Umi Devnet',
+                isNetworkRequestPending: false 
+              }));
+              return;
+            }
           } else {
-            isNetworkRequestPending = false;
-            throw switchError;
+            console.error('Failed to switch to Umi Devnet:', switchError);
+            setState(prev => ({ 
+              ...prev, 
+              error: 'Failed to switch to Umi Devnet',
+              isNetworkRequestPending: false 
+            }));
+            return;
           }
         }
-        isNetworkRequestPending = false;
       }
 
+      console.log('Getting balance...');
+      const provider = new ethers.BrowserProvider(window.ethereum);
       const balance = await provider.getBalance(account);
       const balanceInEth = ethers.formatEther(balance);
+      console.log('Balance:', balanceInEth);
 
-      dispatch(setConnected({ address: account, chainId }));
-      dispatch(setBalance(balanceInEth));
-
-      // Listen for account changes
-      window.ethereum.on('accountsChanged', (accounts: string[]) => {
-        if (accounts.length === 0) {
-          dispatch(setDisconnected());
-        } else {
-          dispatch(setConnected({ address: accounts[0], chainId }));
-        }
+      console.log('Setting connected state...');
+      setState({
+        isConnected: true,
+        address: account,
+        balance: balanceInEth,
+        error: null,
+        isNetworkRequestPending: false,
+        privateKey: null,
       });
 
-      // Listen for chain changes
-      window.ethereum.on('chainChanged', (chainId: string) => {
-        if (Number(chainId) !== UMI_CONFIG.chainId) {
-          dispatch(setError('Please switch to Umi Devnet'));
-        }
-      });
-
+      console.log('Wallet connected successfully');
     } catch (error: any) {
-      dispatch(setError(error.message || 'Failed to connect wallet'));
-    }
-  };
-
-  const disconnectWallet = () => {
-    dispatch(setDisconnected());
-  };
-
-  const refreshBalance = async () => {
-    if (!wallet.address) return;
-
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const balance = await provider.getBalance(wallet.address);
-      const balanceInEth = ethers.formatEther(balance);
-      dispatch(setBalance(balanceInEth));
-    } catch (error: any) {
-      console.error('Failed to refresh balance:', error);
-    }
-  };
-
-  useEffect(() => {
-    // Check if wallet is already connected
-    if (window.ethereum) {
-      window.ethereum.request({ method: 'eth_accounts' }).then((accounts: string[]) => {
-        if (accounts.length > 0) {
-          connectWallet();
-        }
-      });
+      console.error('Error connecting wallet:', error);
+      let errorMessage = 'Failed to connect wallet';
+      
+      if (error.message.includes('Extension context invalidated')) {
+        errorMessage = 'MetaMask extension error. Please refresh the page and try again.';
+      } else if (error.message.includes('User rejected')) {
+        errorMessage = 'Connection was rejected by user';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setState(prev => ({ 
+        ...prev, 
+        error: errorMessage,
+        isNetworkRequestPending: false 
+      }));
     }
   }, []);
 
+  const disconnectWallet = useCallback(() => {
+    console.log('Disconnecting wallet...');
+    setState({
+      isConnected: false,
+      address: null,
+      balance: '0',
+      error: null,
+      isNetworkRequestPending: false,
+      privateKey: null,
+    });
+  }, []);
+
+  // Sayfa yüklendiğinde mevcut bağlantıyı kontrol et
+  useEffect(() => {
+    const checkExistingConnection = async () => {
+      console.log('Checking existing connection...');
+      if (!window.ethereum) {
+        console.log('No MetaMask found');
+        return;
+      }
+
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        console.log('Existing accounts:', accounts);
+        if (accounts.length > 0) {
+          console.log('Found existing connection, connecting...');
+          connectWallet();
+        }
+      } catch (error) {
+        console.error('Error checking existing connection:', error);
+        // Extension context hatası durumunda sessizce geç
+        if (error instanceof Error && error.message.includes('Extension context invalidated')) {
+          console.log('MetaMask extension context invalidated during initial check');
+        }
+      }
+    };
+
+    checkExistingConnection();
+  }, [connectWallet]);
+
+  // MetaMask event listeners
+  useEffect(() => {
+    if (!window.ethereum) return;
+
+    const handleAccountsChanged = (accounts: string[]) => {
+      console.log('Accounts changed:', accounts);
+      if (accounts.length === 0) {
+        disconnectWallet();
+      } else if (state.address && accounts[0] !== state.address) {
+        connectWallet();
+      }
+    };
+
+    const handleChainChanged = () => {
+      console.log('Chain changed, reloading...');
+      window.location.reload();
+    };
+
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', handleChainChanged);
+
+      return () => {
+        window.ethereum?.removeListener('accountsChanged', handleAccountsChanged);
+        window.ethereum?.removeListener('chainChanged', handleChainChanged);
+      };
+    }
+  }, [state.address, connectWallet, disconnectWallet]);
+
+  console.log('Wallet state:', state);
+
   return {
-    ...wallet,
+    ...state,
     connectWallet,
     disconnectWallet,
-    refreshBalance,
   };
 }; 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
-import { useWallet } from '@/hooks/useWallet';
+import { useWalletContext } from '@/contexts/WalletContext';
 import { Button } from '@/components/styled/Button';
 import { Input } from '@/components/styled/Input';
 import { Card } from '@/components/styled/Card';
@@ -176,6 +176,21 @@ const ActionButtons = styled.div`
   margin-top: ${theme.spacing[6]};
 `;
 
+const ConnectPrompt = styled.div`
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: ${theme.borderRadius.lg};
+  padding: ${theme.spacing[4]};
+  margin-bottom: ${theme.spacing[4]};
+  text-align: center;
+  
+  p {
+    margin: 0;
+    color: #856404;
+    font-weight: ${theme.fonts.weight.medium};
+  }
+`;
+
 const MyDomainsButton = styled(Button)`
   font-size: ${theme.fonts.size.lg};
   padding: ${theme.spacing[4]} ${theme.spacing[6]};
@@ -271,17 +286,7 @@ const FeatureDescription = styled.p`
   font-size: ${theme.fonts.size.base};
 `;
 
-const ConnectPrompt = styled.div`
-  background: linear-gradient(135deg, ${theme.colors.warning[50]}, ${theme.colors.warning[100]});
-  border: 2px solid ${theme.colors.warning[200]};
-  border-radius: ${theme.borderRadius.xl};
-  padding: ${theme.spacing[6]};
-  margin-bottom: ${theme.spacing[6]};
-  text-align: center;
-  font-weight: ${theme.fonts.weight.medium};
-  color: ${theme.colors.warning[700]};
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
-`;
+
 
 const FeatureCards: React.FC = () => {
   const features = [
@@ -319,8 +324,12 @@ const FeatureCards: React.FC = () => {
 
 export const Home: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const { isConnected } = useWallet();
   const navigate = useNavigate();
+  const { walletState } = useWalletContext();
+
+  const isConnected = walletState.selectedChain && 
+    ((walletState.selectedChain === 'move' && walletState.moveWallet.isConnected) || 
+     (walletState.selectedChain === 'evm' && walletState.evmWallet.isConnected));
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -351,30 +360,30 @@ export const Home: React.FC = () => {
         )}
         
         <SearchForm onSubmit={handleSearch}>
-                         <SearchInput
-                 type="text"
-                 placeholder="Search for a .umi name"
-                 value={searchTerm}
-                 onChange={(e) => setSearchTerm(e.target.value)}
-                 $fullWidth
-                 $size="lg"
-                 disabled={!isConnected}
-               />
-               <SearchButton
-                 type="submit"
-                 $fullWidth
-                 $size="lg"
-                 disabled={!isConnected || !searchTerm.trim()}
-               >
-                 Search Domain
-               </SearchButton>
-             </SearchForm>
-             
-             {isConnected && (
-               <ActionButtons>
-                 <MyDomainsButton onClick={handleMyDomains} $fullWidth>
-                   👤 View My Domains
-                 </MyDomainsButton>
+          <SearchInput
+            type="text"
+            placeholder="Search for a .umi name"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            $fullWidth
+            $size="lg"
+            disabled={!isConnected}
+          />
+          <SearchButton
+            type="submit"
+            $fullWidth
+            $size="lg"
+            disabled={!isConnected || !searchTerm.trim()}
+          >
+            Search Domain
+          </SearchButton>
+        </SearchForm>
+        
+        {isConnected && (
+          <ActionButtons>
+            <MyDomainsButton onClick={handleMyDomains} $fullWidth>
+              👤 View My Domains
+            </MyDomainsButton>
           </ActionButtons>
         )}
       </SearchSection>

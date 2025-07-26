@@ -1,11 +1,11 @@
 import { UmiConfig } from '@/types';
 
 export const UMI_CONFIG = {
-  rpcUrl: 'http://localhost:4000',
-  chainId: 42069, // Umi Devnet chain ID
-  explorerUrl: 'https://devnet.explorer.moved.network',
-  contractAddress: '0x00000000000000000000000071197e7a1CA5A2cb2AD82432B924F69B1E3dB123', // 64 karakterlik Move adresi
-} as const;
+  rpcUrl: 'http://localhost:4000', // Proxy server
+  contractAddress: '0x00000000000000000000000071197e7a1CA5A2cb2AD82432B924F69B1E3dB123',
+  domainPrice: '1', // APT
+  domainPriceEth: '0.001', // ETH
+};
 
 export const UMI_NETWORK = {
   name: 'Umi Devnet',
