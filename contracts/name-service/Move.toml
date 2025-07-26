@@ -1,0 +1,12 @@
+[package]
+name = "name_service"
+version = "1.0.0"
+authors = ["Umi Name Service Team"]
+
+[addresses]
+umi_name_service = "ACCOUNT_ADDRESS" # Replace with your wallet address
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-framework.git"
+rev = "aptos-release-v1.27"
+subdir = "aptos-framework" 

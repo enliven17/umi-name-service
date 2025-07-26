@@ -1,136 +1,208 @@
 # Umi Name Service Deployment Guide
 
+Bu rehber [Umi Network'ün resmi dokümantasyonuna](https://docs.uminetwork.com/deploy-contract) dayanmaktadır.
+
 ## Prerequisites
 
-1. **Umi CLI**: Install the Umi CLI tool
-2. **Test ETH**: Get test ETH from the Umi faucet
-3. **Wallet**: Set up a wallet with Umi Devnet
+1. **Node.js 18+** kurulu olmalı
+2. **MetaMask** veya uyumlu Web3 cüzdanı
+3. **Umi Devnet** cüzdanınızda yapılandırılmış olmalı
+4. **Test ETH** - Umi faucet'ten alınmalı
 
-## Smart Contract Deployment
+## 1. Hardhat Kurulumu
 
-### 1. Deploy the Move Contract
+Proje zaten Hardhat ile yapılandırılmış durumda. Gerekli paketler kuruldu:
 
-The Move contract is located in `contracts/NameService.move`. To deploy it:
+```bash
+npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox @moved/hardhat-plugin @aptos-labs/ts-sdk
+```
 
-1. **Install Umi CLI** (if not already installed):
-   ```bash
-   # Follow instructions at https://docs.uminetwork.com/
-   ```
+## 2. Cüzdan Yapılandırması
 
-2. **Deploy the contract**:
-   ```bash
-   # Navigate to the contracts directory
-   cd contracts
-   
-   # Deploy using Umi CLI
-   umi deploy NameService.move
-   ```
+### Private Key Ekleme
 
-3. **Note the contract address** after deployment
+`hardhat.config.js` dosyasında private key'inizi ekleyin:
 
-### 2. Update Configuration
+```javascript
+module.exports = {
+  defaultNetwork: "devnet",
+  networks: {
+    devnet: {
+      url: "https://devnet.uminetwork.com",
+      accounts: ["YOUR_PRIVATE_KEY"] // Buraya private key'inizi ekleyin
+    }
+  }
+};
+```
 
-After deploying the contract, update the contract address in `src/config/umi.ts`:
+**⚠️ Güvenlik Uyarısı:** Private key'inizi asla GitHub'a push etmeyin. `.env` dosyası kullanın:
+
+```bash
+# .env dosyası oluşturun
+echo "PRIVATE_KEY=your_private_key_here" > .env
+```
+
+Ve `hardhat.config.js`'i güncelleyin:
+
+```javascript
+require('dotenv').config();
+
+module.exports = {
+  defaultNetwork: "devnet",
+  networks: {
+    devnet: {
+      url: "https://devnet.uminetwork.com",
+      accounts: [process.env.PRIVATE_KEY]
+    }
+  }
+};
+```
+
+### Umi Devnet Yapılandırması
+
+MetaMask'ta Umi Devnet'i ekleyin:
+- **Network Name**: Umi Devnet
+- **RPC URL**: https://devnet.uminetwork.com
+- **Chain ID**: 42069
+- **Currency Symbol**: ETH
+- **Block Explorer**: https://devnet.explorer.moved.network
+
+## 3. Move Contract Deploy
+
+### Contract Hazırlığı
+
+Move contract'ı `contracts/name-service/` klasöründe hazır durumda:
+
+```
+contracts/name-service/
+├── Move.toml
+└── sources/
+    └── name_service.move
+```
+
+### Address Güncelleme
+
+`contracts/name-service/Move.toml` dosyasında adresinizi güncelleyin:
+
+```toml
+[addresses]
+umi_name_service = "YOUR_WALLET_ADDRESS" # Cüzdan adresinizi buraya ekleyin
+```
+
+### Contract Compile
+
+```bash
+npx hardhat compile
+```
+
+### Contract Deploy
+
+```bash
+npx hardhat run scripts/deploy.js --network devnet
+```
+
+Deploy başarılı olduktan sonra şu bilgileri not edin:
+- **Contract Address**: Deploy eden cüzdan adresi
+- **Module Path**: `{address}::name_service`
+
+## 4. Frontend Konfigürasyonu
+
+### Contract Address Güncelleme
+
+Deploy tamamlandıktan sonra `src/config/umi.ts` dosyasını güncelleyin:
 
 ```typescript
 export const UMI_CONFIG: UmiConfig = {
   rpcUrl: 'https://devnet.uminetwork.com',
   chainId: 42069,
   explorerUrl: 'https://devnet.explorer.moved.network',
-  contractAddress: 'YOUR_DEPLOYED_CONTRACT_ADDRESS', // Update this
+  contractAddress: 'YOUR_DEPLOYED_CONTRACT_ADDRESS', // Deploy edilen adres
 };
 ```
 
-## Frontend Deployment
+## 5. Frontend Deploy
 
-### 1. Build the Application
+### Build
 
 ```bash
 npm run build
 ```
 
-### 2. Deploy to Vercel (Recommended)
+### Deploy Options
 
-1. **Install Vercel CLI**:
-   ```bash
-   npm i -g vercel
-   ```
+#### Vercel (Önerilen)
 
-2. **Deploy**:
-   ```bash
-   vercel
-   ```
+```bash
+npm install -g vercel
+vercel
+```
 
-3. **Configure environment variables** in Vercel dashboard if needed
+#### Netlify
 
-### 3. Deploy to Netlify
+1. `dist` klasörünü Netlify'a yükleyin
+2. Domain ayarlarını yapılandırın
 
-1. **Build the project**:
-   ```bash
-   npm run build
-   ```
+#### GitHub Pages
 
-2. **Deploy the `dist` folder** to Netlify
+`vite.config.ts`'e base path ekleyin:
 
-### 4. Deploy to GitHub Pages
+```typescript
+export default defineConfig({
+  base: '/umi-name-service/',
+  // ... diğer ayarlar
+});
+```
 
-1. **Add GitHub Pages configuration** to `vite.config.ts`:
-   ```typescript
-   export default defineConfig({
-     base: '/umi-name-service/',
-     // ... other config
-   });
-   ```
+## 6. Test Etme
 
-2. **Push to GitHub** and enable GitHub Pages
+1. **Cüzdan Bağlantısı**: Deploy edilen uygulamada cüzdanınızı bağlayın
+2. **Network Kontrolü**: Umi Devnet'te olduğunuzdan emin olun
+3. **Domain Arama**: Bir domain arayın (örn: "myname")
+4. **Domain Kayıt**: Müsaitse kayıt edin
 
-## Testing the Deployment
+## 7. Contract Fonksiyonları
 
-1. **Connect your wallet** to the deployed application
-2. **Switch to Umi Devnet** in your wallet
-3. **Search for a domain** (e.g., "myname")
-4. **Register the domain** if available
+Deploy edilen contract şu fonksiyonları destekler:
 
-## Contract Functions
+- `register_domain(name, duration_years)` - Yeni domain kaydetme
+- `transfer_domain(name, new_owner)` - Domain sahipliği transfer etme
+- `renew_domain(name, duration_years)` - Domain yenileme
+- `set_resolver(name, resolver)` - Resolver adresi ayarlama
+- `is_domain_registered(name)` - Domain kayıtlı mı kontrol etme
+- `get_domain_owner(name)` - Domain sahibini alma
+- `get_domain_expiry(name)` - Domain bitiş tarihini alma
+- `get_user_domains(user_addr)` - Kullanıcının domain'lerini alma
 
-The deployed contract supports the following functions:
+## 8. Troubleshooting
 
-- `register_domain(name, duration_years)` - Register a new domain
-- `transfer_domain(name, new_owner)` - Transfer domain ownership
-- `renew_domain(name, duration_years)` - Renew domain registration
-- `set_resolver(name, resolver)` - Set resolver address
-- `is_domain_registered(name)` - Check if domain is registered
-- `get_domain_owner(name)` - Get domain owner
-- `get_domain_expiry(name)` - Get domain expiry date
-- `get_user_domains(user_addr)` - Get user's domains
+### Yaygın Sorunlar
 
-## Price Structure
+1. **"Contract not found" hatası**:
+   - Contract adresini kontrol edin
+   - Deploy işleminin başarılı olduğundan emin olun
 
-Domain prices are based on name length:
-- 3 characters: 0.01 ETH
-- 4 characters: 0.005 ETH
-- 5 characters: 0.002 ETH
-- 6+ characters: 0.001 ETH
+2. **"Insufficient balance" hatası**:
+   - Umi faucet'ten daha fazla test ETH alın
+   - Cüzdan bakiyenizi kontrol edin
 
-## Troubleshooting
+3. **"Network not supported" hatası**:
+   - Cüzdanınızın Umi Devnet'te olduğundan emin olun
+   - Umi Devnet'i cüzdanınıza ekleyin
 
-### Common Issues
+### Destek
 
-1. **"Contract not found" error**:
-   - Verify the contract address in `src/config/umi.ts`
-   - Ensure the contract was deployed successfully
+Deploy sorunları için:
+- [Umi Dokümantasyonu](https://docs.uminetwork.com/)
+- Umi Discord topluluğu
+- GitHub issue açın
 
-2. **"Insufficient balance" error**:
-   - Get more test ETH from the Umi faucet
-   - Check your wallet balance
+## 9. Production Checklist
 
-3. **"Network not supported" error**:
-   - Ensure your wallet is connected to Umi Devnet
-   - Add Umi Devnet to your wallet if not already added
-
-### Support
-
-For deployment issues:
-- Check the Umi documentation: https://docs.uminetwork.com/
-- Join the Umi Discord community
-- Open an issue on GitHub 
+- [ ] Private key güvenliği (.env dosyası)
+- [ ] Contract başarıyla deploy edildi
+- [ ] Frontend contract adresi güncellendi
+- [ ] Test ETH yeterli miktarda
+- [ ] Domain arama çalışıyor
+- [ ] Domain kayıt çalışıyor
+- [ ] Cüzdan bağlantısı stabil
+- [ ] Error handling çalışıyor 
