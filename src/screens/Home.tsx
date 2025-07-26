@@ -45,6 +45,25 @@ const SearchSection = styled(Card)`
   text-align: center;
 `;
 
+const ActionButtons = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing[3]};
+  margin-top: ${theme.spacing[4]};
+`;
+
+const MyDomainsButton = styled(Button)`
+  font-size: ${theme.fonts.size.base};
+  padding: ${theme.spacing[3]} ${theme.spacing[4]};
+  background-color: ${theme.colors.neutral[100]};
+  color: ${theme.colors.text.primary};
+  border: 1px solid ${theme.colors.neutral[300]};
+  
+  &:hover {
+    background-color: ${theme.colors.neutral[200]};
+  }
+`;
+
 const SearchForm = styled.form`
   display: flex;
   flex-direction: column;
@@ -125,6 +144,10 @@ export const Home: React.FC = () => {
     }
   };
 
+  const handleMyDomains = () => {
+    navigate(ROUTES.MY_DOMAINS);
+  };
+
   const features = [
     {
       icon: '🔗',
@@ -179,6 +202,14 @@ export const Home: React.FC = () => {
             Search Domain
           </SearchButton>
         </SearchForm>
+        
+        {isConnected && (
+          <ActionButtons>
+            <MyDomainsButton onClick={handleMyDomains} fullWidth>
+              View My Domains
+            </MyDomainsButton>
+          </ActionButtons>
+        )}
       </SearchSection>
 
       <FeaturesSection>

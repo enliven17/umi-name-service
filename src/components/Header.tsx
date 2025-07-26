@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useWallet } from '@/hooks/useWallet';
 import { Button } from './styled/Button';
 import { theme } from '@/theme';
+import { ROUTES } from '@/constants/routes';
 
 const HeaderContainer = styled.header`
   display: flex;
@@ -65,6 +66,26 @@ const ErrorMessage = styled.div`
   margin-right: ${theme.spacing[3]};
 `;
 
+const Navigation = styled.nav`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing[4]};
+  margin-right: ${theme.spacing[4]};
+`;
+
+const NavLink = styled.a`
+  color: ${theme.colors.text.primary};
+  text-decoration: none;
+  font-weight: ${theme.fonts.weight.medium};
+  padding: ${theme.spacing[2]} ${theme.spacing[3]};
+  border-radius: ${theme.borderRadius.md};
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: ${theme.colors.neutral[100]};
+  }
+`;
+
 export const Header: React.FC = () => {
   const { isConnected, address, balance, error, connectWallet, disconnectWallet } = useWallet();
 
@@ -81,6 +102,12 @@ export const Header: React.FC = () => {
       
       <div style={{ display: 'flex', alignItems: 'center' }}>
         {error && <ErrorMessage>{error}</ErrorMessage>}
+        
+        {isConnected && (
+          <Navigation>
+            <NavLink href={ROUTES.MY_DOMAINS}>My Domains</NavLink>
+          </Navigation>
+        )}
         
         {isConnected ? (
           <WalletInfo>
