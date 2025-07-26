@@ -327,9 +327,7 @@ export const Home: React.FC = () => {
   const navigate = useNavigate();
   const { walletState } = useWalletContext();
 
-  const isConnected = walletState.selectedChain && 
-    ((walletState.selectedChain === 'move' && walletState.moveWallet.isConnected) || 
-     (walletState.selectedChain === 'evm' && walletState.evmWallet.isConnected));
+  const isConnected = walletState.selectedChain === 'evm' && walletState.evmWallet.isConnected;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

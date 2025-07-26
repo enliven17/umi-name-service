@@ -1,143 +1,130 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { Button } from './styled/Button';
-import { theme } from '@/theme';
-import { ConnectWalletModal } from './ConnectWalletModal';
 import { useWalletContext } from '@/contexts/WalletContext';
+import { ConnectWalletModal } from './ConnectWalletModal';
+import { ROUTES } from '@/constants/routes';
 
 const HeaderContainer = styled.header`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: ${theme.spacing[2]} ${theme.spacing[4]};
-  background: linear-gradient(135deg, ${theme.colors.primary[600]}, ${theme.colors.secondary[600]});
-  color: white;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem 0;
   position: sticky;
   top: 0;
   z-index: 100;
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+`;
+
+const Nav = styled.nav`
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 `;
 
 const Logo = styled.div`
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #333;
   display: flex;
   align-items: center;
-  gap: ${theme.spacing[3]};
-  h1 {
-    font-size: ${theme.fonts.size.xl};
-    font-weight: ${theme.fonts.weight.bold};
-    color: white;
-    margin: 0;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  gap: 0.5rem;
+`;
+
+const NavLinks = styled.div`
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+`;
+
+const NavLink = styled(Link)`
+  text-decoration: none;
+  color: #666;
+  font-weight: 500;
+  transition: color 0.2s;
+
+  &:hover {
+    color: #333;
   }
-  .logo-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: ${theme.borderRadius.lg};
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    transition: all 0.3s ease;
-    &:hover {
-      transform: scale(1.05);
-      background: rgba(255, 255, 255, 0.2);
-    }
+`;
+
+const ConnectButton = styled.button`
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
 `;
 
 const WalletInfo = styled.div`
   display: flex;
   align-items: center;
-  gap: ${theme.spacing[3]};
-  background: rgba(255, 255, 255, 0.1);
-  padding: ${theme.spacing[2]} ${theme.spacing[3]};
-  border-radius: ${theme.borderRadius.lg};
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  .address {
-    font-family: ${theme.fonts.family.mono};
-    font-size: ${theme.fonts.size.xs};
-    color: rgba(255, 255, 255, 0.9);
-    background: rgba(255, 255, 255, 0.1);
-    padding: ${theme.spacing[1]} ${theme.spacing[2]};
-    border-radius: ${theme.borderRadius.md};
-    border: 1px solid rgba(255, 255, 255, 0.2);
-  }
-  .balance {
-    font-size: ${theme.fonts.size.xs};
-    color: rgba(255, 255, 255, 0.9);
-    font-weight: ${theme.fonts.weight.medium};
-  }
-  .chain {
-    font-size: ${theme.fonts.size.xs};
-    color: #fff;
-    background: #4fd1c5;
-    border-radius: 6px;
-    padding: 2px 8px;
-    margin-right: 6px;
-    font-weight: 600;
-    letter-spacing: 1px;
-  }
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
 `;
 
-const ConnectButton = styled(Button)`
-  background: rgba(255, 255, 255, 0.2);
+const WalletAddress = styled.span`
+  font-family: monospace;
+  font-size: 0.875rem;
+  color: #64748b;
+`;
+
+const ChainBadge = styled.span`
+  background: #10b981;
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(10px);
-  transition: all 0.3s ease;
-  padding: ${theme.spacing[2]} ${theme.spacing[3]};
-  font-size: ${theme.fonts.size.sm};
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
   font-weight: 600;
-  
+`;
+
+const DisconnectButton = styled.button`
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.2s;
+
   &:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    background: #dc2626;
   }
 `;
 
 export const Header: React.FC = () => {
+  const { walletState, setSelectedChain, setEvmWallet, disconnect } = useWalletContext();
   const [modalOpen, setModalOpen] = useState(false);
-  const { walletState, setSelectedChain, setMoveWallet, setEvmWallet, disconnect } = useWalletContext();
 
-  // Zincir seçimine göre cüzdan bağlama fonksiyonları
-  const handleConnectMove = async () => {
-    if (!(window as any).aptos) {
-      alert('Petra veya Martian cüzdanı yüklü değil!');
-      return;
-    }
-    try {
-      const response = await (window as any).aptos.connect();
-      if (response && response.address) {
-        setMoveWallet({ isConnected: true, address: response.address });
-        setSelectedChain('move');
-        setModalOpen(false);
-      }
-    } catch (e) {
-      alert('MoveVM cüzdan bağlantı hatası!');
-    }
-  };
-  
   const handleConnectEvm = async () => {
-    if (!(window as any).ethereum) {
-      alert('MetaMask yüklü değil!');
-      return;
-    }
     try {
-      const accounts = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
-      if (accounts && accounts.length > 0) {
-        setEvmWallet({ isConnected: true, address: accounts[0], balance: '0' });
+      if (!window.ethereum) {
+        alert('MetaMask is not installed!');
+        return;
+      }
+
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      if (accounts.length > 0) {
+        setEvmWallet({ isConnected: true, address: accounts[0] });
         setSelectedChain('evm');
         setModalOpen(false);
       }
-    } catch (e) {
-      alert('EVM cüzdan bağlantı hatası!');
+    } catch (error) {
+      console.error('EVM wallet connection error:', error);
+      alert('EVM wallet connection error!');
     }
   };
 
@@ -145,45 +132,47 @@ export const Header: React.FC = () => {
     disconnect();
   };
 
-  const formatAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
 
-  const isConnected = walletState.selectedChain && 
-    ((walletState.selectedChain === 'move' && walletState.moveWallet.isConnected) || 
-     (walletState.selectedChain === 'evm' && walletState.evmWallet.isConnected));
+  const isConnected = walletState.selectedChain === 'evm' && walletState.evmWallet.isConnected;
 
   return (
     <HeaderContainer>
-      <Logo>
-        <div className="logo-icon">🌐</div>
-        <h1>Umi Name Service</h1>
-      </Logo>
-      <div style={{ display: 'flex', alignItems: 'center' }}>
-        {isConnected ? (
-          <WalletInfo>
-            <span className="chain">{walletState.selectedChain === 'move' ? 'MoveVM' : 'EVM'}</span>
-            <div className="address">
-              {formatAddress(
-                walletState.selectedChain === 'move' 
-                  ? walletState.moveWallet.address! 
-                  : walletState.evmWallet.address!
-              )}
-            </div>
-            <Button $variant="outline" $size="sm" onClick={handleDisconnect}>
-              Disconnect
-            </Button>
-          </WalletInfo>
-        ) : (
-          <ConnectButton onClick={() => setModalOpen(true)}>
-            Cüzdan Bağla
-          </ConnectButton>
-        )}
-        <ConnectWalletModal
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          onConnectMove={handleConnectMove}
-          onConnectEvm={handleConnectEvm}
-        />
-      </div>
+      <Nav>
+        <Logo>
+          🌐 Umi Name Service
+        </Logo>
+
+        <NavLinks>
+          <NavLink to={ROUTES.HOME}>Home</NavLink>
+          <NavLink to={ROUTES.DOMAIN_SEARCH}>Search</NavLink>
+          <NavLink to={ROUTES.MY_DOMAINS}>My Domains</NavLink>
+
+          {!isConnected ? (
+            <ConnectButton onClick={() => setModalOpen(true)}>
+              Connect Wallet
+            </ConnectButton>
+          ) : (
+            <WalletInfo>
+              <ChainBadge>EVM</ChainBadge>
+              <WalletAddress>
+                {formatAddress(walletState.evmWallet.address!)}
+              </WalletAddress>
+              <DisconnectButton onClick={handleDisconnect}>
+                Disconnect
+              </DisconnectButton>
+            </WalletInfo>
+          )}
+        </NavLinks>
+      </Nav>
+
+      <ConnectWalletModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onConnectEvm={handleConnectEvm}
+      />
     </HeaderContainer>
   );
 }; 

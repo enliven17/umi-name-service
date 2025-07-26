@@ -1,72 +1,65 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 interface WalletState {
-  selectedChain: 'move' | 'evm' | null;
-  moveWallet: {
-    isConnected: boolean;
-    address: string | null;
-  };
+  selectedChain: 'evm' | null;
   evmWallet: {
     isConnected: boolean;
     address: string | null;
-    balance: string;
   };
 }
 
 interface WalletContextType {
   walletState: WalletState;
-  setSelectedChain: (chain: 'move' | 'evm' | null) => void;
-  setMoveWallet: (wallet: { isConnected: boolean; address: string | null }) => void;
-  setEvmWallet: (wallet: { isConnected: boolean; address: string | null; balance: string }) => void;
+  setSelectedChain: (chain: 'evm' | null) => void;
+  setEvmWallet: (wallet: { isConnected: boolean; address: string | null }) => void;
   disconnect: () => void;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
-export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const useWalletContext = () => {
+  const context = useContext(WalletContext);
+  if (!context) {
+    throw new Error('useWalletContext must be used within a WalletProvider');
+  }
+  return context;
+};
+
+interface WalletProviderProps {
+  children: ReactNode;
+}
+
+export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const [walletState, setWalletState] = useState<WalletState>({
     selectedChain: null,
-    moveWallet: { isConnected: false, address: null },
-    evmWallet: { isConnected: false, address: null, balance: '0' },
+    evmWallet: { isConnected: false, address: null },
   });
 
-  const setSelectedChain = (chain: 'move' | 'evm' | null) => {
+  const setSelectedChain = (chain: 'evm' | null) => {
     setWalletState(prev => ({ ...prev, selectedChain: chain }));
   };
 
-  const setMoveWallet = (wallet: { isConnected: boolean; address: string | null }) => {
-    setWalletState(prev => ({ ...prev, moveWallet: wallet }));
-  };
-
-  const setEvmWallet = (wallet: { isConnected: boolean; address: string | null; balance: string }) => {
+  const setEvmWallet = (wallet: { isConnected: boolean; address: string | null }) => {
     setWalletState(prev => ({ ...prev, evmWallet: wallet }));
   };
 
   const disconnect = () => {
     setWalletState({
       selectedChain: null,
-      moveWallet: { isConnected: false, address: null },
-      evmWallet: { isConnected: false, address: null, balance: '0' },
+      evmWallet: { isConnected: false, address: null },
     });
   };
 
+  const value: WalletContextType = {
+    walletState,
+    setSelectedChain,
+    setEvmWallet,
+    disconnect,
+  };
+
   return (
-    <WalletContext.Provider value={{
-      walletState,
-      setSelectedChain,
-      setMoveWallet,
-      setEvmWallet,
-      disconnect,
-    }}>
+    <WalletContext.Provider value={value}>
       {children}
     </WalletContext.Provider>
   );
-};
-
-export const useWalletContext = () => {
-  const context = useContext(WalletContext);
-  if (context === undefined) {
-    throw new Error('useWalletContext must be used within a WalletProvider');
-  }
-  return context;
 }; 

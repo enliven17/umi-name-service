@@ -1,168 +1,202 @@
 import { ethers } from 'ethers';
 import { UMI_CONFIG } from '@/config/umi';
 
-async function getSystemConfig() {
-  try {
-    const response = await fetch('http://localhost:5000/api/config');
-    if (!response.ok) throw new Error('Failed to fetch config');
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching system config:', error);
-    throw error;
+// EVM Contract ABI - bytes32 version
+const EVM_CONTRACT_ABI = [
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "domainHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "registerDomain",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "domainHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "isDomainRegistered",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "domainHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getDomainOwner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "domainHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getDomainExpiry",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "getUserDomains",
+    "outputs": [
+      {
+        "internalType": "bytes32[]",
+        "name": "",
+        "type": "bytes32[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getDomainPrice",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
   }
-}
+];
 
-// Gerçek cüzdan ile domain kaydı
-export async function registerDomainWithEvmWallet(
-  domainName: string,
-  durationYears: number = 1
-): Promise<string> {
+const EVM_CONTRACT_ADDRESS = '0xd2479Fa6758F5d0B84D963C8076f15fd4017df4E';
+
+export const registerDomainWithEvmWallet = async (domainName: string): Promise<string> => {
   try {
-    console.log('Registering domain on EVM with connected wallet:', { domainName, durationYears });
-
-    if (!(window as any).ethereum) {
-      throw new Error('MetaMask not connected');
+    console.log('Registering domain on EVM with connected wallet:', { domainName });
+    
+    if (!window.ethereum) {
+      throw new Error('MetaMask is not installed');
     }
 
-    const config = await getSystemConfig();
-    const provider = new ethers.BrowserProvider((window as any).ethereum);
-
-    const accounts = await provider.listAccounts();
-    if (accounts.length === 0) {
-      throw new Error('No EVM wallet account found');
-    }
-
+    const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner();
-    console.log('EVM wallet address:', await signer.getAddress());
+    const address = await signer.getAddress();
+    
+    console.log('EVM wallet address:', address);
 
-    // Kontrat ABI'sini güncelle - registerDomain fonksiyonunu kullan
-    const contract = new ethers.Contract(
-      config.evmContractAddress,
-      [
-        'function registerDomain(string domain) payable',
-        'function isDomainRegistered(string domain) view returns (bool)',
-        'function getDomainOwner(string domain) view returns (address)',
-        'function getUserDomains(address user) view returns (string[])',
-        'event DomainRegistered(address indexed owner, string domain, uint256 expiry)'
-      ],
-      signer
-    );
+    const contract = new ethers.Contract(EVM_CONTRACT_ADDRESS, EVM_CONTRACT_ABI, signer);
 
-    const pricesResponse = await fetch('http://localhost:5000/api/prices');
-    const prices = await pricesResponse.json();
-    const ethPrice = ethers.parseEther(prices.eth);
+    // Convert domain name to bytes32 hash
+    const domainHash = ethers.encodeBytes32String(domainName);
+    console.log('Domain hash:', domainHash);
 
-    console.log('Domain price:', prices.eth, 'ETH');
+    // Get domain price
+    const price = await contract.getDomainPrice();
+    console.log('Domain price:', ethers.formatEther(price), 'ETH');
 
-    const tx = await contract.registerDomain(domainName, {
-      value: ethPrice
-    });
-
-    console.log('EVM transaction sent:', tx.hash);
+    // Register domain
+    const tx = await contract.registerDomain(domainHash, { value: price });
+    console.log('Transaction sent:', tx.hash);
 
     const receipt = await tx.wait();
+    console.log('Transaction confirmed:', receipt);
 
-    console.log('EVM transaction completed:', receipt);
-    return tx.hash;
-
+    return receipt.hash;
   } catch (error) {
     console.error('Error in registerDomainWithEvmWallet:', error);
     throw error;
   }
-}
+};
 
-// Private key ile domain kaydı (eski yöntem - test için)
-export async function registerDomainEVMWithWallet(
-  privateKey: string,
-  domainName: string,
-  durationYears: number = 1
-): Promise<string> {
+export const checkDomainStatusEVM = async (domainName: string): Promise<{ isRegistered: boolean; owner?: string; expiry?: number }> => {
   try {
-    console.log('Registering domain on EVM with private key:', { domainName, durationYears });
+    const provider = new ethers.JsonRpcProvider(UMI_CONFIG.rpcUrl);
+    const contract = new ethers.Contract(EVM_CONTRACT_ADDRESS, EVM_CONTRACT_ABI, provider);
 
-    const config = await getSystemConfig();
-
-    const provider = new ethers.JsonRpcProvider(config.evmRpcUrl);
-    const wallet = new ethers.Wallet(privateKey, provider);
-
-    console.log('EVM wallet address:', wallet.address);
-
-    const contract = new ethers.Contract(
-      config.evmContractAddress,
-      [
-        'function registerDomain(string domain) payable',
-        'function isDomainRegistered(string domain) view returns (bool)',
-        'function getDomainOwner(string domain) view returns (address)',
-        'function getUserDomains(address user) view returns (string[])',
-        'event DomainRegistered(address indexed owner, string domain, uint256 expiry)'
-      ],
-      wallet
-    );
-
-    const pricesResponse = await fetch('http://localhost:5000/api/prices');
-    const prices = await pricesResponse.json();
-    const ethPrice = ethers.parseEther(prices.eth);
-
-    console.log('Domain price:', prices.eth, 'ETH');
-
-    const tx = await contract.registerDomain(domainName, {
-      value: ethPrice
-    });
-
-    console.log('EVM transaction sent:', tx.hash);
-
-    const receipt = await tx.wait();
-
-    console.log('EVM transaction completed:', receipt);
-    return tx.hash;
-
-  } catch (error) {
-    console.error('Error in registerDomainEVMWithWallet:', error);
-    throw error;
-  }
-}
-
-export async function checkDomainStatusEVM(domainName: string): Promise<{ isRegistered: boolean; owner: string | null }> {
-  try {
-    const config = await getSystemConfig();
-    const provider = new ethers.JsonRpcProvider(config.evmRpcUrl);
-    const contract = new ethers.Contract(
-      config.evmContractAddress,
-      [
-        'function isDomainRegistered(string domain) view returns (bool)',
-        'function getDomainOwner(string domain) view returns (address)'
-      ],
-      provider
-    );
-    const isRegistered = await contract.isDomainRegistered(domainName);
+    const domainHash = ethers.encodeBytes32String(domainName);
+    
+    const isRegistered = await contract.isDomainRegistered(domainHash);
+    
     if (isRegistered) {
-      const owner = await contract.getDomainOwner(domainName);
-      return { isRegistered: true, owner };
-    } else {
-      return { isRegistered: false, owner: null };
+      const owner = await contract.getDomainOwner(domainHash);
+      const expiry = await contract.getDomainExpiry(domainHash);
+      
+      return {
+        isRegistered: true,
+        owner,
+        expiry: Number(expiry)
+      };
     }
+    
+    return { isRegistered: false };
   } catch (error) {
     console.error('Error checking EVM domain status:', error);
-    return { isRegistered: false, owner: null };
+    return { isRegistered: false };
   }
-}
+};
 
-export async function getUserDomainsEVM(userAddress: string): Promise<string[]> {
+export const getUserDomainsEVM = async (address: string): Promise<string[]> => {
   try {
-    const config = await getSystemConfig();
-    const provider = new ethers.JsonRpcProvider(config.evmRpcUrl);
-    const contract = new ethers.Contract(
-      config.evmContractAddress,
-      [
-        'function getUserDomains(address user) view returns (bytes32[])'
-      ],
-      provider
-    );
-    const domainHashes = await contract.getUserDomains(userAddress);
-    // bytes32 array'i string array'e çevir (şimdilik boş array döndür)
-    return [];
+    const provider = new ethers.JsonRpcProvider(UMI_CONFIG.rpcUrl);
+    const contract = new ethers.Contract(EVM_CONTRACT_ADDRESS, EVM_CONTRACT_ABI, provider);
+
+    const domainHashes = await contract.getUserDomains(address);
+    
+    // Convert bytes32 hashes back to domain names
+    const domainNames: string[] = [];
+    for (const hash of domainHashes) {
+      try {
+        // This is a simplified conversion - in practice you'd need to store the original domain names
+        const domainName = ethers.decodeBytes32String(hash);
+        domainNames.push(domainName);
+      } catch (e) {
+        // If conversion fails, use the hash as fallback
+        domainNames.push(hash);
+      }
+    }
+    
+    return domainNames;
   } catch (error) {
     console.error('Error getting EVM user domains:', error);
     return [];
   }
-} 
+}; 

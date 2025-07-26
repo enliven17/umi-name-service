@@ -1,66 +1,104 @@
-const express = require('express');
-const cors = require('cors');
+const http = require('http');
+const https = require('https');
+const url = require('url');
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
-const app = express();
 const PORT = 4000;
-
-// CORS ayarları
-app.use(cors());
-app.use(express.json());
-
-// Umi Devnet RPC URL
 const UMI_RPC_URL = 'https://devnet.uminetwork.com';
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', proxy: 'running' });
-});
+const server = http.createServer(async (req, res) => {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
 
-// Proxy middleware
-app.use('/', async (req, res) => {
-  const url = UMI_RPC_URL + req.url;
-  const options = {
-    method: req.method,
-    headers: { 
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    },
-    body: ['POST', 'PUT', 'PATCH'].includes(req.method) ? JSON.stringify(req.body) : undefined,
-  };
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200);
+    res.end();
+    return;
+  }
+
+  // Health check endpoint
+  if (req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', proxy: 'running' }));
+    return;
+  }
 
   try {
-    console.log(`Proxying request to: ${url}`);
-    const response = await fetch(url, options);
-    const text = await response.text();
+    const targetUrl = UMI_RPC_URL + req.url;
+    console.log(`Proxying request to: ${targetUrl}`);
 
-    // Eğer yanıt boşsa, anlamlı bir hata döndür
-    if (!text || text.trim() === '') {
-      console.log('Empty response from Umi RPC');
-      res.status(response.status).json({ 
-        error: 'Empty response from Umi Devnet node',
-        message: 'The requested module or function may not exist or be indexed yet'
+    const options = {
+      method: req.method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      }
+    };
+
+    // Add body for POST requests
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => {
+        body += chunk.toString();
       });
-      return;
-    }
+      req.on('end', async () => {
+        try {
+          options.body = body;
+          const response = await fetch(targetUrl, options);
+          const text = await response.text();
 
-    // JSON parse edilebiliyorsa öyle döndür, yoksa düz metin döndür
-    try {
-      const json = JSON.parse(text);
-      res.status(response.status).json(json);
-    } catch (e) {
-      console.log('Non-JSON response from Umi RPC:', text);
-      res.status(response.status).send(text);
+          if (!text || text.trim() === '') {
+            res.writeHead(response.status, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Empty response from Umi Devnet node' }));
+            return;
+          }
+
+          try {
+            const json = JSON.parse(text);
+            res.writeHead(response.status, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(json));
+          } catch (e) {
+            res.writeHead(response.status, { 'Content-Type': 'text/plain' });
+            res.end(text);
+          }
+        } catch (err) {
+          console.error('Proxy error:', err);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+    } else {
+      // GET requests
+      const response = await fetch(targetUrl, options);
+      const text = await response.text();
+
+      if (!text || text.trim() === '') {
+        res.writeHead(response.status, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Empty response from Umi Devnet node' }));
+        return;
+      }
+
+      try {
+        const json = JSON.parse(text);
+        res.writeHead(response.status, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(json));
+      } catch (e) {
+        res.writeHead(response.status, { 'Content-Type': 'text/plain' });
+        res.end(text);
+      }
     }
   } catch (err) {
     console.error('Proxy error:', err);
-    res.status(500).json({ 
-      error: err.message,
-      message: 'Failed to connect to Umi Devnet RPC'
-    });
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: err.message }));
   }
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Proxy server running on http://localhost:${PORT}`);
   console.log(`Proxying to Umi Devnet: ${UMI_RPC_URL}`);
 }); 

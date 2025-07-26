@@ -1,294 +1,157 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useAppDispatch, useAppSelector } from '@/hooks/redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { setSearchedDomain, setLoading, setError } from '@/store/slices/domainSlice';
+import { checkDomainStatus, registerDomainWithEvmWallet } from '@/api/hybridNameService';
+import { useWalletContext } from '@/contexts/WalletContext';
 import { Button } from '@/components/styled/Button';
 import { Input } from '@/components/styled/Input';
-import { Card } from '@/components/styled/Card';
-import { checkDomainStatus } from '@/api/hybridNameService';
-import { registerDomainWithMoveWallet } from '@/api/moveWalletService';
-import { registerDomainWithEvmWallet } from '@/api/evmWalletService';
-import { useWalletContext } from '@/contexts/WalletContext';
-import { theme } from '@/theme';
-import { ROUTES } from '@/constants/routes';
 
 const SearchContainer = styled.div`
   max-width: 800px;
   margin: 0 auto;
-  padding: ${theme.spacing[8]} ${theme.spacing[6]};
+  padding: 2rem;
 `;
 
 const SearchHeader = styled.div`
   text-align: center;
-  margin-bottom: ${theme.spacing[8]};
+  margin-bottom: 2rem;
 `;
 
 const SearchTitle = styled.h1`
-  font-size: ${theme.fonts.size['4xl']};
-  font-weight: ${theme.fonts.weight.bold};
-  color: ${theme.colors.text.primary};
-  margin-bottom: ${theme.spacing[4]};
+  font-size: 2rem;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 0.5rem;
 `;
 
 const SearchForm = styled.form`
   display: flex;
-  gap: ${theme.spacing[4]};
-  margin-bottom: ${theme.spacing[8]};
-  
-  @media (max-width: ${theme.breakpoints.md}) {
-    flex-direction: column;
-  }
+  gap: 1rem;
+  margin-bottom: 2rem;
 `;
 
 const SearchInput = styled(Input)`
   flex: 1;
-  font-size: ${theme.fonts.size.lg};
 `;
 
-const DomainResult = styled(Card)`
-  margin-top: ${theme.spacing[6]};
-`;
+const ConnectPrompt = styled.div`
+  text-align: center;
+  padding: 2rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 2px dashed #e2e8f0;
+  margin-bottom: 2rem;
 
-const DomainHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: ${theme.spacing[4]};
-  
-  @media (max-width: ${theme.breakpoints.md}) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: ${theme.spacing[3]};
-  }
-`;
-
-const DomainName = styled.h2`
-  font-size: ${theme.fonts.size['2xl']};
-  font-weight: ${theme.fonts.weight.bold};
-  color: ${theme.colors.text.primary};
-  margin: 0;
-`;
-
-const DomainStatus = styled.div<{ isAvailable: boolean }>`
-  padding: ${theme.spacing[2]} ${theme.spacing[3]};
-  border-radius: ${theme.borderRadius.lg};
-  font-size: ${theme.fonts.size.sm};
-  font-weight: ${theme.fonts.weight.medium};
-  background-color: ${({ isAvailable }) => 
-    isAvailable ? theme.colors.success[100] : theme.colors.error[100]
-  };
-  color: ${({ isAvailable }) => 
-    isAvailable ? theme.colors.success[700] : theme.colors.error[700]
-  };
-  border: 1px solid ${({ isAvailable }) => 
-    isAvailable ? theme.colors.success[200] : theme.colors.error[200]
-  };
-`;
-
-const DomainInfo = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: ${theme.spacing[4]};
-  margin-bottom: ${theme.spacing[6]};
-`;
-
-const InfoItem = styled.div`
-  .label {
-    font-size: ${theme.fonts.size.sm};
-    color: ${theme.colors.text.secondary};
-    margin-bottom: ${theme.spacing[1]};
-  }
-  
-  .value {
-    font-size: ${theme.fonts.size.base};
-    color: ${theme.colors.text.primary};
-    font-weight: ${theme.fonts.weight.medium};
-  }
-`;
-
-const ActionButtons = styled.div`
-  display: flex;
-  gap: ${theme.spacing[3]};
-  
-  @media (max-width: ${theme.breakpoints.md}) {
-    flex-direction: column;
+  p {
+    font-size: 1.1rem;
+    color: #64748b;
+    margin: 0;
   }
 `;
 
 const ErrorMessage = styled.div`
-  color: ${theme.colors.error[500]};
-  text-align: center;
-  padding: ${theme.spacing[4]};
-  background-color: ${theme.colors.error[50]};
-  border: 1px solid ${theme.colors.error[200]};
-  border-radius: ${theme.borderRadius.lg};
-  margin-bottom: ${theme.spacing[4]};
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+  margin-bottom: 1rem;
 `;
 
 const LoadingSpinner = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: ${theme.spacing[8]};
-  
-  &::after {
-    content: '';
-    width: 32px;
-    height: 32px;
-    border: 3px solid ${theme.colors.neutral[200]};
-    border-top: 3px solid ${theme.colors.primary[500]};
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
-
-const ConnectPrompt = styled.div`
-  background: rgba(255, 193, 7, 0.1);
-  border: 1px solid rgba(255, 193, 7, 0.3);
-  border-radius: ${theme.borderRadius.lg};
-  padding: ${theme.spacing[4]};
-  margin-bottom: ${theme.spacing[4]};
   text-align: center;
-  
-  p {
-    margin: 0;
-    color: #856404;
-    font-weight: ${theme.fonts.weight.medium};
-  }
+  padding: 2rem;
+  color: #64748b;
 `;
 
-const ChainSelector = styled.div`
+const DomainResult = styled.div`
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+`;
+
+const DomainHeader = styled.div`
   display: flex;
-  gap: ${theme.spacing[4]};
-  margin-bottom: ${theme.spacing[6]};
-  
-  @media (max-width: ${theme.breakpoints.md}) {
-    flex-direction: column;
-  }
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
 `;
 
-const ChainOption = styled.div<{ $selected: boolean }>`
-  flex: 1;
-  padding: ${theme.spacing[4]};
-  border: 2px solid ${({ $selected }) => $selected ? theme.colors.primary[500] : theme.colors.neutral[200]};
-  border-radius: ${theme.borderRadius.lg};
-  cursor: pointer;
-  transition: all 0.3s ease;
-  background: ${({ $selected }) => $selected ? theme.colors.primary[50] : 'white'};
-  
-  &:hover {
-    border-color: ${theme.colors.primary[400]};
-    background: ${theme.colors.primary[50]};
-  }
-  
-  .chain-name {
-    font-size: ${theme.fonts.size.lg};
-    font-weight: ${theme.fonts.weight.bold};
-    color: ${theme.colors.text.primary};
-    margin-bottom: ${theme.spacing[2]};
-  }
-  
-  .chain-description {
-    font-size: ${theme.fonts.size.sm};
-    color: ${theme.colors.text.secondary};
-    margin-bottom: ${theme.spacing[2]};
-  }
-  
-  .chain-price {
-    font-size: ${theme.fonts.size.sm};
-    font-weight: ${theme.fonts.weight.medium};
-    color: ${theme.colors.primary[600]};
-  }
+const DomainName = styled.h2`
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #333;
+  margin: 0;
+`;
+
+const DomainStatus = styled.div<{ $isAvailable: boolean }>`
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  background-color: ${({ $isAvailable }) =>
+    $isAvailable ? '#dcfce7' : '#fef2f2'
+  };
+  color: ${({ $isAvailable }) =>
+    $isAvailable ? '#166534' : '#dc2626'
+  };
+  border: 1px solid ${({ $isAvailable }) =>
+    $isAvailable ? '#bbf7d0' : '#fecaca'
+  };
 `;
 
 const RegisterButton = styled(Button)`
   width: 100%;
-  margin-top: ${theme.spacing[4]};
-  font-size: ${theme.fonts.size.lg};
-  padding: ${theme.spacing[4]};
+  margin-top: 1rem;
 `;
 
-const TransactionStatus = styled.div<{ $status: 'pending' | 'success' | 'error' | null }>`
-  padding: ${theme.spacing[4]};
-  border-radius: ${theme.borderRadius.lg};
-  margin-top: ${theme.spacing[4]};
+const TransactionStatus = styled.div<{ $status: 'pending' | 'success' | 'error' }>`
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
   text-align: center;
   
   ${({ $status }) => {
     switch ($status) {
       case 'pending':
         return `
-          background: rgba(59, 130, 246, 0.1);
-          border: 1px solid rgba(59, 130, 246, 0.3);
-          color: #1e40af;
+          background: #fef3c7;
+          color: #92400e;
+          border: 1px solid #fde68a;
         `;
       case 'success':
         return `
-          background: rgba(34, 197, 94, 0.1);
-          border: 1px solid rgba(34, 197, 94, 0.3);
-          color: #15803d;
+          background: #dcfce7;
+          color: #166534;
+          border: 1px solid #bbf7d0;
         `;
       case 'error':
         return `
-          background: rgba(239, 68, 68, 0.1);
-          border: 1px solid rgba(239, 68, 68, 0.3);
+          background: #fef2f2;
           color: #dc2626;
+          border: 1px solid #fecaca;
         `;
-      default:
-        return '';
     }
   }}
 `;
 
-const DomainChainInfo = styled.div`
-  background: ${theme.colors.neutral[50]};
-  border: 1px solid ${theme.colors.neutral[200]};
-  border-radius: ${theme.borderRadius.md};
-  padding: ${theme.spacing[3]};
-  margin: ${theme.spacing[3]} 0;
-
-  .chain-status {
-    display: flex;
-    align-items: center;
-    gap: ${theme.spacing[2]};
-    margin-bottom: ${theme.spacing[2]};
-
-    .status-indicator {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: ${theme.colors.success[500]};
-    }
-
-    .status-indicator.taken {
-      background: ${theme.colors.error[500]};
-    }
-  }
-`;
-
 export const DomainSearch: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const dispatch = useAppDispatch();
+  const dispatch = useDispatch();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { walletState } = useWalletContext();
-  const { searchedDomain, isLoading, error } = useAppSelector((state: any) => state.domains);
+  
+  const { searchedDomain, isLoading, error } = useSelector((state: any) => state.domains);
   
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [selectedChain, setSelectedChain] = useState<'move' | 'evm' | null>(null);
-  const [domainStatus, setDomainStatus] = useState<any>(null);
   const [transactionStatus, setTransactionStatus] = useState<'pending' | 'success' | 'error' | null>(null);
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
 
-  const isConnected = walletState.selectedChain && 
-    ((walletState.selectedChain === 'move' && walletState.moveWallet.isConnected) || 
-     (walletState.selectedChain === 'evm' && walletState.evmWallet.isConnected));
+  const isConnected = walletState.selectedChain === 'evm' && walletState.evmWallet.isConnected;
 
   useEffect(() => {
     if (searchTerm) {
@@ -328,33 +191,27 @@ export const DomainSearch: React.FC = () => {
     if (!validation.isValid) {
       setValidationError(validation.error);
       dispatch(setSearchedDomain(null));
-      setDomainStatus(null);
       return;
     }
 
     setValidationError(null);
     dispatch(setLoading(true));
     dispatch(setError(null));
-    setSelectedChain(null);
     setTransactionStatus(null);
     setTransactionHash(null);
 
     try {
       const status = await checkDomainStatus(term);
-      setDomainStatus(status);
       
-      const domainInfo = {
-        name: term,
-        isAvailable: status.isAvailable,
-        owner: status.owner || '',
-        resolver: '',
-        price: status.isAvailable ? 'Choose chain' : 'N/A',
-        expiryDate: null,
-        moveAvailable: status.moveAvailable,
-        evmAvailable: status.evmAvailable,
-        registeredChain: status.registeredChain,
-        prices: status.prices
-      };
+              const domainInfo = {
+          name: term,
+          isAvailable: status.isAvailable,
+          owner: status.owner || '',
+          resolver: '',
+          price: status.price,
+          expiryDate: null,
+          registeredChain: status.registeredChain
+        };
 
       dispatch(setSearchedDomain(domainInfo));
     } catch (err: any) {
@@ -369,39 +226,22 @@ export const DomainSearch: React.FC = () => {
     handleSearch(searchTerm);
   };
 
-  const handleChainSelect = (chain: 'move' | 'evm') => {
-    setSelectedChain(chain);
-  };
-
   const handleRegister = async () => {
-    if (!selectedChain || !searchedDomain || !isConnected) return;
-
-    // Cüzdan zinciri ile seçilen zincir uyumlu mu kontrol et
-    if (walletState.selectedChain !== selectedChain) {
-      alert(`Please connect your ${selectedChain.toUpperCase()} wallet first!`);
-      return;
-    }
+    if (!searchedDomain || !isConnected) return;
 
     try {
       setTransactionStatus('pending');
       dispatch(setLoading(true));
       
-      let txHash: string;
-      
-      if (selectedChain === 'move') {
-        txHash = await registerDomainWithMoveWallet(searchedDomain.name, 1);
-      } else {
-        txHash = await registerDomainWithEvmWallet(searchedDomain.name, 1);
-      }
+      const txHash = await registerDomainWithEvmWallet(searchedDomain.name);
 
       setTransactionHash(txHash);
       setTransactionStatus('success');
-      console.log(`Domain registered on ${selectedChain.toUpperCase()}:`, txHash);
+      console.log('Domain registered on EVM:', txHash);
       
       // 5 saniye sonra domain durumunu yenile
       setTimeout(() => {
         handleSearch(searchTerm);
-        setSelectedChain(null);
         setTransactionStatus(null);
         setTransactionHash(null);
       }, 5000);
@@ -426,7 +266,7 @@ export const DomainSearch: React.FC = () => {
 
       {!isConnected && (
         <ConnectPrompt>
-          <p>🔗 Connect your wallet to search and register domains</p>
+          <p>🔗 Connect your MetaMask wallet to search and register domains</p>
         </ConnectPrompt>
       )}
 
@@ -453,78 +293,42 @@ export const DomainSearch: React.FC = () => {
       )}
 
       {isLoading && (
-        <LoadingSpinner />
+        <LoadingSpinner>Searching domain...</LoadingSpinner>
       )}
 
       {searchedDomain && !isLoading && (
         <DomainResult>
           <DomainHeader>
             <DomainName>{searchedDomain.name}.umi</DomainName>
-            <DomainStatus isAvailable={searchedDomain.isAvailable}>
+            <DomainStatus $isAvailable={searchedDomain.isAvailable}>
               {searchedDomain.isAvailable ? 'Available' : 'Taken'}
             </DomainStatus>
           </DomainHeader>
 
-          {searchedDomain.isAvailable && domainStatus && (
-            <>
-              <DomainChainInfo>
-                <div className="chain-status">
-                  <div className={`status-indicator ${domainStatus.moveAvailable ? '' : 'taken'}`} />
-                  <span>MoveVM (APT): {domainStatus.moveAvailable ? 'Available' : 'Taken'}</span>
-                </div>
-                <div className="chain-status">
-                  <div className={`status-indicator ${domainStatus.evmAvailable ? '' : 'taken'}`} />
-                  <span>EVM (ETH): {domainStatus.evmAvailable ? 'Available' : 'Taken'}</span>
-                </div>
-              </DomainChainInfo>
-
-              {!selectedChain ? (
-                <ChainSelector>
-                  <ChainOption 
-                    $selected={selectedChain === 'move'} 
-                    onClick={() => handleChainSelect('move')}
-                    style={{ opacity: domainStatus.moveAvailable ? 1 : 0.5, cursor: domainStatus.moveAvailable ? 'pointer' : 'not-allowed' }}
-                  >
-                    <div className="chain-name">MoveVM</div>
-                    <div className="chain-description">Register with APT</div>
-                    <div className="chain-price">{domainStatus.prices?.apt || '0.1'} APT</div>
-                  </ChainOption>
-                  <ChainOption 
-                    $selected={selectedChain === 'evm'} 
-                    onClick={() => handleChainSelect('evm')}
-                    style={{ opacity: domainStatus.evmAvailable ? 1 : 0.5, cursor: domainStatus.evmAvailable ? 'pointer' : 'not-allowed' }}
-                  >
-                    <div className="chain-name">EVM</div>
-                    <div className="chain-description">Register with ETH</div>
-                    <div className="chain-price">{domainStatus.prices?.eth || '0.01'} ETH</div>
-                  </ChainOption>
-                </ChainSelector>
-              ) : (
-                <div>
-                  <p>Selected Chain: <strong>{selectedChain.toUpperCase()}</strong></p>
-                  <p>Connected Wallet: <strong>{formatAddress(walletState.selectedChain === 'move' ? walletState.moveWallet.address! : walletState.evmWallet.address!)}</strong></p>
-                  
-                  <RegisterButton 
-                    onClick={handleRegister}
-                    disabled={walletState.selectedChain !== selectedChain}
-                  >
-                    Register Domain with {selectedChain === 'move' ? 'APT' : 'ETH'}
-                  </RegisterButton>
-                  
-                  {walletState.selectedChain !== selectedChain && (
-                    <p style={{ color: 'red', marginTop: '10px' }}>
-                      Please connect your {selectedChain.toUpperCase()} wallet first!
-                    </p>
-                  )}
-                </div>
+          {searchedDomain.isAvailable && (
+            <div>
+              <p><strong>Price:</strong> {searchedDomain.price} ETH</p>
+              <p><strong>Connected Wallet:</strong> {formatAddress(walletState.evmWallet.address!)}</p>
+              
+              <RegisterButton 
+                onClick={handleRegister}
+                disabled={!isConnected}
+              >
+                Register Domain with ETH
+              </RegisterButton>
+              
+              {!isConnected && (
+                <p style={{ color: 'red', marginTop: '10px' }}>
+                  Please connect your MetaMask wallet first!
+                </p>
               )}
-            </>
+            </div>
           )}
 
-          {!searchedDomain.isAvailable && domainStatus?.owner && (
+          {!searchedDomain.isAvailable && searchedDomain.owner && (
             <div>
-              <p><strong>Owner:</strong> {formatAddress(domainStatus.owner)}</p>
-              <p><strong>Chain:</strong> {domainStatus.registeredChain?.toUpperCase()}</p>
+              <p><strong>Owner:</strong> {formatAddress(searchedDomain.owner)}</p>
+              <p><strong>Chain:</strong> EVM</p>
             </div>
           )}
         </DomainResult>
@@ -535,7 +339,7 @@ export const DomainSearch: React.FC = () => {
           {transactionStatus === 'pending' && (
             <div>
               <p>⏳ Transaction pending...</p>
-              <p>Please confirm in your wallet</p>
+              <p>Please confirm in your MetaMask wallet</p>
             </div>
           )}
           {transactionStatus === 'success' && (

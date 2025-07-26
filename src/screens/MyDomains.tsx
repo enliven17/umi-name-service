@@ -2,163 +2,162 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useWalletContext } from '@/contexts/WalletContext';
 import { getUserDomains } from '@/api/hybridNameService';
-import { Card } from '@/components/styled/Card';
-import { theme } from '@/theme';
 
 const Container = styled.div`
   max-width: 1200px;
   margin: 0 auto;
-  padding: ${theme.spacing[6]};
+  padding: 2rem;
 `;
 
 const Header = styled.div`
   text-align: center;
-  margin-bottom: ${theme.spacing[8]};
+  margin-bottom: 3rem;
 `;
 
 const Title = styled.h1`
-  font-size: ${theme.fonts.size['3xl']};
-  font-weight: ${theme.fonts.weight.bold};
-  color: ${theme.colors.text.primary};
-  margin-bottom: ${theme.spacing[4]};
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 1rem;
 `;
 
 const Subtitle = styled.p`
-  font-size: ${theme.fonts.size.lg};
-  color: ${theme.colors.text.secondary};
-  max-width: 600px;
-  margin: 0 auto;
+  font-size: 1.1rem;
+  color: #666;
+  margin: 0;
 `;
 
 const ConnectPrompt = styled.div`
-  background: rgba(255, 193, 7, 0.1);
-  border: 1px solid rgba(255, 193, 7, 0.3);
-  border-radius: ${theme.borderRadius.lg};
-  padding: ${theme.spacing[6]};
-  margin: ${theme.spacing[8]} 0;
   text-align: center;
-  
+  padding: 3rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 2px dashed #e2e8f0;
+
   p {
+    font-size: 1.2rem;
+    color: #64748b;
     margin: 0;
-    color: #856404;
-    font-weight: ${theme.fonts.weight.medium};
-    font-size: ${theme.fonts.size.lg};
   }
 `;
 
-const DomainGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: ${theme.spacing[6]};
-  margin-top: ${theme.spacing[6]};
+const WalletInfo = styled.div`
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  text-align: center;
+
+  h3 {
+    margin: 0 0 1rem 0;
+    color: #333;
+    font-size: 1.2rem;
+  }
+
+  p {
+    margin: 0.5rem 0;
+    color: #666;
+  }
 `;
 
-const DomainCard = styled(Card)`
-  padding: ${theme.spacing[6]};
-  transition: all 0.3s ease;
-  
+const ChainBadge = styled.span`
+  background: #10b981;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 0.5rem;
+`;
+
+const DomainsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+`;
+
+const DomainCard = styled.div`
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.2s;
+
   &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   }
 `;
 
 const DomainName = styled.h3`
-  font-size: ${theme.fonts.size.xl};
-  font-weight: ${theme.fonts.weight.bold};
-  color: ${theme.colors.text.primary};
-  margin-bottom: ${theme.spacing[3]};
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #333;
+  margin: 0 0 1rem 0;
 `;
 
 const DomainInfo = styled.div`
-  margin-bottom: ${theme.spacing[4]};
-`;
-
-const InfoRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: ${theme.spacing[2]};
-  
-  .label {
-    font-size: ${theme.fonts.size.sm};
-    color: ${theme.colors.text.secondary};
-  }
-  
-  .value {
-    font-size: ${theme.fonts.size.sm};
-    font-weight: ${theme.fonts.weight.medium};
-    color: ${theme.colors.text.primary};
-  }
-`;
-
-const ChainBadge = styled.span<{ $chain: 'move' | 'evm' }>`
-  display: inline-block;
-  padding: ${theme.spacing[1]} ${theme.spacing[2]};
-  border-radius: ${theme.borderRadius.full};
-  font-size: ${theme.fonts.size.xs};
-  font-weight: ${theme.fonts.weight.medium};
-  background: ${({ $chain }) => 
-    $chain === 'move' ? theme.colors.primary[100] : theme.colors.secondary[100]};
-  color: ${({ $chain }) => 
-    $chain === 'move' ? theme.colors.primary[700] : theme.colors.secondary[700]};
-`;
-
-const EmptyState = styled.div`
-  text-align: center;
-  padding: ${theme.spacing[12]};
-  color: ${theme.colors.text.secondary};
-  
-  .icon {
-    font-size: 4rem;
-    margin-bottom: ${theme.spacing[4]};
-  }
-  
-  h3 {
-    font-size: ${theme.fonts.size.xl};
-    margin-bottom: ${theme.spacing[2]};
-    color: ${theme.colors.text.primary};
-  }
-  
   p {
-    font-size: ${theme.fonts.size.lg};
+    margin: 0.5rem 0;
+    color: #666;
+    font-size: 0.875rem;
   }
 `;
 
 const LoadingSpinner = styled.div`
   text-align: center;
-  padding: ${theme.spacing[8]};
-  color: ${theme.colors.text.secondary};
+  padding: 3rem;
+  color: #64748b;
 `;
 
-interface DomainData {
-  move: string[];
-  evm: string[];
-  all: string[];
-}
+const ErrorMessage = styled.div`
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+  margin-bottom: 1rem;
+`;
+
+const EmptyState = styled.div`
+  text-align: center;
+  padding: 3rem;
+  color: #64748b;
+
+  h3 {
+    margin: 0 0 1rem 0;
+    color: #333;
+  }
+
+  p {
+    margin: 0;
+  }
+`;
 
 export const MyDomains: React.FC = () => {
   const { walletState } = useWalletContext();
-  const [domains, setDomains] = useState<DomainData>({ move: [], evm: [], all: [] });
+  const [domains, setDomains] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isConnected = walletState.selectedChain && 
-    ((walletState.selectedChain === 'move' && walletState.moveWallet.isConnected) || 
-     (walletState.selectedChain === 'evm' && walletState.evmWallet.isConnected));
+  const isConnected = walletState.selectedChain === 'evm' && walletState.evmWallet.isConnected;
 
-  const fetchUserDomains = async () => {
-    if (!isConnected) return;
+  useEffect(() => {
+    if (isConnected && walletState.evmWallet.address) {
+      fetchDomains();
+    }
+  }, [isConnected, walletState.evmWallet.address]);
+
+  const fetchDomains = async () => {
+    if (!walletState.evmWallet.address) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
-      const userAddress = walletState.selectedChain === 'move' 
-        ? walletState.moveWallet.address! 
-        : walletState.evmWallet.address!;
-
-      const userDomains = await getUserDomains(userAddress);
+      const userDomains = await getUserDomains(walletState.evmWallet.address);
       setDomains(userDomains);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch domains');
@@ -166,12 +165,6 @@ export const MyDomains: React.FC = () => {
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (isConnected) {
-      fetchUserDomains();
-    }
-  }, [isConnected, walletState.selectedChain]);
 
   const formatAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -184,95 +177,49 @@ export const MyDomains: React.FC = () => {
           <Title>My Domains</Title>
           <Subtitle>View and manage your registered domains</Subtitle>
         </Header>
-        
         <ConnectPrompt>
-          <p>🔗 Connect your wallet to view your domains</p>
+          <p>🔗 Please connect your MetaMask wallet to view your domains</p>
         </ConnectPrompt>
       </Container>
     );
   }
 
-  if (isLoading) {
-    return (
-      <Container>
-        <Header>
-          <Title>My Domains</Title>
-          <Subtitle>View and manage your registered domains</Subtitle>
-        </Header>
-        
-        <LoadingSpinner>
-          <p>Loading your domains...</p>
-        </LoadingSpinner>
-      </Container>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container>
-        <Header>
-          <Title>My Domains</Title>
-          <Subtitle>View and manage your registered domains</Subtitle>
-        </Header>
-        
-        <div style={{ textAlign: 'center', color: 'red', padding: theme.spacing[8] }}>
-          <p>Error: {error}</p>
-        </div>
-      </Container>
-    );
-  }
-
-  const allDomains = domains.all;
-  const connectedChain = walletState.selectedChain;
-
   return (
     <Container>
       <Header>
         <Title>My Domains</Title>
-        <Subtitle>
-          View and manage your registered domains
-          {connectedChain && (
-            <span style={{ display: 'block', marginTop: theme.spacing[2], fontSize: theme.fonts.size.sm }}>
-              Connected: <strong>{connectedChain.toUpperCase()}</strong> - {formatAddress(connectedChain === 'move' ? walletState.moveWallet.address! : walletState.evmWallet.address!)}
-            </span>
-          )}
-        </Subtitle>
+        <Subtitle>View and manage your registered domains</Subtitle>
       </Header>
 
-      {allDomains.length === 0 ? (
+      <WalletInfo>
+        <h3>Connected Wallet</h3>
+        <p>
+          <ChainBadge>EVM</ChainBadge>
+          {formatAddress(walletState.evmWallet.address!)}
+        </p>
+      </WalletInfo>
+
+      {error && <ErrorMessage>{error}</ErrorMessage>}
+
+      {isLoading ? (
+        <LoadingSpinner>Loading your domains...</LoadingSpinner>
+      ) : domains.length === 0 ? (
         <EmptyState>
-          <div className="icon">🏠</div>
           <h3>No domains found</h3>
-          <p>You haven't registered any domains yet. Start by searching for a domain name!</p>
+          <p>You haven't registered any domains yet. Start by searching for a domain!</p>
         </EmptyState>
       ) : (
-        <DomainGrid>
-          {allDomains.map((domain, index) => (
+        <DomainsGrid>
+          {domains.map((domain, index) => (
             <DomainCard key={index}>
               <DomainName>{domain}.umi</DomainName>
               <DomainInfo>
-                <InfoRow>
-                  <span className="label">Chain:</span>
-                  <ChainBadge $chain={connectedChain as 'move' | 'evm'}>
-                    {connectedChain?.toUpperCase()}
-                  </ChainBadge>
-                </InfoRow>
-                <InfoRow>
-                  <span className="label">Owner:</span>
-                  <span className="value">
-                    {formatAddress(connectedChain === 'move' ? walletState.moveWallet.address! : walletState.evmWallet.address!)}
-                  </span>
-                </InfoRow>
-                <InfoRow>
-                  <span className="label">Status:</span>
-                  <span className="value" style={{ color: theme.colors.success[600] }}>
-                    Active
-                  </span>
-                </InfoRow>
+                <p><strong>Chain:</strong> EVM</p>
+                <p><strong>Owner:</strong> {formatAddress(walletState.evmWallet.address!)}</p>
               </DomainInfo>
             </DomainCard>
           ))}
-        </DomainGrid>
+        </DomainsGrid>
       )}
     </Container>
   );
